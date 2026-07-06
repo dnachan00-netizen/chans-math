@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>찬스수학 통합 학생 관리 프로그램</title>
+<style>
+  :root{
+    --ink:#1b2340;
+    --ink-soft:#4a5378;
+    --paper:#f6f5f2;
+    --panel:#ffffff;
+    --line:#e3e1da;
+    --accent:#2f5d50;      /* 깊은 그린 - 칠판/노트 느낌 */
+    --accent-soft:#e7efec;
+    --warn:#b3452e;        /* 결석/경고 - 벽돌색 */
+    --warn-soft:#f6e8e4;
+    --late:#b8862f;        /* 지각 - 앰버 */
+    --late-soft:#f7efe0;
+    --mono:'Space Mono','Courier New',monospace;
+    --sans:'Pretendard','Noto Sans KR',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+  }
+  /* ===== 헤더 ===== */
+  header{
+    background:var(--ink);
+    color:#f6f5f2;
+    padding:22px 32px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    border-bottom:4px solid var(--accent);
+  }
+  header .brand{display:flex;align-items:baseline;gap:12px;}
+  header .brand .mark{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:2px;
+    color:var(--accent);
+    background:rgba(47,93,80,0.25);
+    padding:4px 8px;
+    border-radius:4px;
+  }
+  header h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-0.3px;}
+  header .today{font-family:var(--mono);font-size:13px;color:#c9cbd9;}
+
+  /* ===== 탭 네비게이션 ===== */
+  nav.tabs{
+    display:flex;
+    gap:4px;
+    padding:16px 32px 0;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    border:none;
+    background:transparent;
+    padding:12px 18px;
+    font-size:15px;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border-radius:10px 10px 0 0;
+    position:relative;
+    white-space:nowrap;
+    font-family:var(--sans);
+  }
+  nav.tabs button .num{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--accent);
+    margin-right:6px;
+  }
+  nav.tabs button.active{
+    color:var(--ink);
+    background:var(--panel);
+    box-shadow:0 -2px 0 var(--accent) inset;
+  }
+  nav.tabs button.active::after{
+    content:"";
+    position:absolute;
+    left:0;right:0;bottom:-1px;
+    height:2px;
+    background:var(--panel);
+  }
+
+  main{padding:28px 32px 60px;max-width:1180px;margin:0 auto;}
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:26px;
+    margin-bottom:22px;
+  }
+  .panel h2{
+    margin:0 0 4px;
+    font-size:19px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel .desc{color:var(--ink-soft);font-size:13.5px;margin:0 0 20px;}
+
+  .grid-form{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:14px;
+    margin-bottom:16px;
+  }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+    letter-spacing:0.2px;
+  }
+  input,select,textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    font-size:14.5px;
+    font-family:var(--sans);
+    background:#fcfcfb;
+    color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    background:#fff;
+  }
+  .btn{
+    border:none;
+    border-radius:8px;
+    padding:11px 20px;
+    font-size:14.5px;
+    font-weight:700;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#254a40;}
+  .btn-ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink-soft);}
+  .btn-ghost:hover{border-color:var(--ink-soft);color:var(--ink);}
+  .btn-warn{background:var(--warn);color:#fff;}
+  .btn-sm{padding:6px 12px;font-size:12.5px;border-radius:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    letter-spacing:0.4px;
+    color:var(--ink-soft);
+    border-bottom:2px solid var(--ink);
+    padding:8px 10px;
+    font-weight:700;
+  }
+  tbody td{
+    padding:10px 10px;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  tbody tr:hover{background:#fafaf8;}
+  .empty{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--ink-soft);
+    font-size:14px;
+    border:1.5px dashed var(--line);
+    border-radius:10px;
+  }
+
+  .badge{
+    display:inline-block;
+    padding:3px 10px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:700;
+  }
+  .badge-present{background:var(--accent-soft);color:var(--accent);}
+  .badge-absent{background:var(--warn-soft);color:var(--warn);}
+  .badge-late{background:var(--late-soft);color:var(--late);}
+
+  .seg{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg button{
+    border:1.5px solid var(--line);
+    background:#fff;
+    padding:7px 14px;
+    border-radius:20px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .seg button.on-present.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .seg button.on-absent.selected{background:var(--warn);color:#fff;border-color:var(--warn);}
+  .seg button.on-late.selected{background:var(--late);color:#fff;border-color:var(--late);}
+
+  .student-pick{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .student-pick button{
+    border:1.5px solid var(--line);
+    background:#fff;
+    padding:8px 14px;
+    border-radius:10px;
+    font-size:13.5px;
+    cursor:pointer;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .student-pick button.selected{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+    color:var(--accent);
+  }
+
+  .score-num{font-family:var(--mono);font-weight:700;}
+  .score-high{color:var(--accent);}
+  .score-mid{color:var(--late);}
+  .score-low{color:var(--warn);}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+  .stat-card{
+    background:#fcfcfb;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .stat-card .label{font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  .stat-card .value{font-family:var(--mono);font-size:22px;font-weight:700;}
+
+  footer{
+    text-align:center;
+    padding:20px;
+    color:var(--ink-soft);
+    font-size:12px;
+    font-family:var(--mono);
+  }
+
+  ::-webkit-scrollbar{height:8px;width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  @media (max-width:640px){
+    header{padding:16px 18px;}
+    nav.tabs{padding:12px 18px 0;}
+    main{padding:18px 18px 40px;}
+    .panel{padding:18px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">CHANCE MATH</span>
+    <h1>찬스수학 통합 학생 관리 프로그램</h1>
+  </div>
+  <div class="today" id="todayLabel"></div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="students"><span class="num">01</span>학생 명단</button>
+  <button class="tab-btn" data-tab="attendance"><span class="num">02</span>출결 관리</button>
+  <button class="tab-btn" data-tab="scores"><span class="num">03</span>성적 관리</button>
+</nav>
+
+<main>
+
+  <!-- ================= 학생 명단 ================= -->
+  <section id="tab-students" class="tab-panel">
+    <div class="panel">
+      <h2>학생 등록</h2>
+      <p class="desc">이름, 학년, 학교를 입력하여 새 학생을 등록하세요.</p>
+      <div class="grid-form">
+        <div>
+          <label>이름</label>
+          <input type="text" id="stuName" placeholder="예: 김민준">
+        </div>
+        <div>
+          <label>학년</label>
+          <select id="stuGrade">
+            <option value="초1">초등 1학년</option>
+            <option value="초2">초등 2학년</option>
+            <option value="초3">초등 3학년</option>
+            <option value="초4">초등 4학년</option>
+            <option value="초5">초등 5학년</option>
+            <option value="초6">초등 6학년</option>
+            <option value="중1" selected>중등 1학년</option>
+            <option value="중2">중등 2학년</option>
+            <option value="중3">중등 3학년</option>
+            <option value="고1">고등 1학년</option>
+            <option value="고2">고등 2학년</option>
+            <option value="고3">고등 3학년</option>
+          </select>
+        </div>
+        <div>
+          <label>학교</label>
+          <input type="text" id="stuSchool" placeholder="예: 대구월성중학교">
+        </div>
+        <div>
+          <label>연락처 (선택)</label>
+          <input type="text" id="stuPhone" placeholder="010-0000-0000">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="addStudentBtn">학생 등록하기</button>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0;">전체 학생 목록 (<span id="studentCount">0</span>명)</h2>
+        <input type="text" id="studentSearch" placeholder="이름으로 검색" style="max-width:220px;">
+      </div>
+      <div id="studentTableWrap"></div>
+    </div>
+  </section>
+
+  <!-- ================= 출결 관리 ================= -->
+  <section id="tab-attendance" class="tab-panel" style="display:none;">
+    <div class="panel">
+      <h2>출결 체크</h2>
+      <p class="desc">날짜를 선택하고, 학생을 클릭한 뒤 출석 상태를 선택하세요.</p>
+      <div class="grid-form" style="max-width:260px;">
+        <div>
+          <label>수업 날짜</label>
+          <input type="date" id="attDate">
+        </div>
+      </div>
+      <div id="attStudentPick" class="student-pick"></div>
+      <div id="attStatusArea"></div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0;">출결 기록 조회</h2>
+        <div style="display:flex;gap:10px;">
+          <select id="attFilterStudent"><option value="">전체 학생</option></select>
+          <button class="btn btn-ghost btn-sm" id="attExportBtn">CSV로 내보내기</button>
+        </div>
+      </div>
+      <div class="stat-row" id="attStatRow"></div>
+      <div id="attTableWrap"></div>
+    </div>
+  </section>
+
+  <!-- ================= 성적 관리 ================= -->
+  <section id="tab-scores" class="tab-panel" style="display:none;">
+    <div class="panel">
+      <h2>테스트 결과 입력</h2>
+      <p class="desc">학생을 선택하고 시험 정보와 점수를 입력하세요.</p>
+      <div id="scoreStudentPick" class="student-pick"></div>
+      <div class="grid-form">
+        <div>
+          <label>시험일</label>
+          <input type="date" id="scoreDate">
+        </div>
+        <div>
+          <label>시험명 / 단원</label>
+          <input type="text" id="scoreExamName" placeholder="예: 3월 모의고사, 2단원 확인평가">
+        </div>
+        <div>
+          <label>점수 (0~100)</label>
+          <input type="number" id="scoreValue" min="0" max="100" placeholder="85">
+        </div>
+        <div>
+          <label>비고 (선택)</label>
+          <input type="text" id="scoreMemo" placeholder="오답 유형, 특이사항 등">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="addScoreBtn">성적 저장하기</button>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <h2 style="margin:0;">성적 목록</h2>
+        <div style="display:flex;gap:10px;">
+          <select id="scoreFilterStudent"><option value="">전체 학생</option></select>
+          <button class="btn btn-ghost btn-sm" id="scoreExportBtn">CSV로 내보내기</button>
+        </div>
+      </div>
+      <div class="stat-row" id="scoreStatRow"></div>
+      <div id="scoreTableWrap"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>CHANCE MATH · 데이터는 이 창을 새로고침하면 초기화되니, 종료 전 "CSV로 내보내기"로 백업해 두세요.</footer>
+
+<script>
+/* =========================================================
+   상태 저장 (메모리 내 - 새로고침 시 초기화됩니다)
+========================================================= */
+let students = [];      // {id, name, grade, school, phone}
+let attendance = [];    // {id, studentId, date, status}  status: 출석/결석/지각
+let scores = [];        // {id, studentId, date, examName, score, memo}
+
+let nextStudentId = 1, nextAttId = 1, nextScoreId = 1;
+
+let attSelectedStudentId = null;
+let scoreSelectedStudentId = null;
+
+/* =========================================================
+   유틸
+========================================================= */
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function fmtDate(str){
+  if(!str) return '-';
+  const [y,m,d] = str.split('-');
+  return `${y}.${m}.${d}`;
+}
+function findStudent(id){ return students.find(s=>s.id===id); }
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function downloadCSV(filename, rows){
+  const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+   탭 전환
+========================================================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p=>p.style.display='none');
+    document.getElementById('tab-'+btn.dataset.tab).style.display='block';
+    if(btn.dataset.tab==='attendance') renderAttendanceTab();
+    if(btn.dataset.tab==='scores') renderScoreTab();
+  });
+});
+
+/* =========================================================
+   학생 명단
+========================================================= */
+document.getElementById('addStudentBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('stuName').value.trim();
+  const grade = document.getElementById('stuGrade').value;
+  const school = document.getElementById('stuSchool').value.trim();
+  const phone = document.getElementById('stuPhone').value.trim();
+  if(!name){ alert('학생 이름을 입력해 주세요.'); return; }
+  students.push({id:nextStudentId++, name, grade, school, phone});
+  document.getElementById('stuName').value='';
+  document.getElementById('stuSchool').value='';
+  document.getElementById('stuPhone').value='';
+  renderStudentTable();
+  renderStudentFilters();
+});
+
+document.getElementById('studentSearch').addEventListener('input', renderStudentTable);
+
+function renderStudentTable(){
+  const keyword = document.getElementById('studentSearch').value.trim();
+  const list = students.filter(s=>s.name.includes(keyword));
+  document.getElementById('studentCount').textContent = students.length;
+  const wrap = document.getElementById('studentTableWrap');
+
+  if(students.length===0){
+    wrap.innerHTML = `<div class="empty">등록된 학생이 없습니다. 위 양식으로 첫 학생을 등록해 보세요.</div>`;
+    return;
+  }
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty">"${escapeHtml(keyword)}"에 해당하는 학생이 없습니다.</div>`;
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>이름</th><th>학년</th><th>학교</th><th>연락처</th><th>출석률</th><th>평균 점수</th><th></th>
+  </tr></thead><tbody>`;
+
+  list.forEach(s=>{
+    const attList = attendance.filter(a=>a.studentId===s.id);
+    const presentCount = attList.filter(a=>a.status==='출석').length;
+    const rate = attList.length ? Math.round(presentCount/attList.length*100) : null;
+    const scoreList = scores.filter(sc=>sc.studentId===s.id);
+    const avg = scoreList.length ? Math.round(scoreList.reduce((a,b)=>a+Number(b.score),0)/scoreList.length) : null;
+
+    html += `<tr>
+      <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td>${escapeHtml(s.grade)}</td>
+      <td>${escapeHtml(s.school)||'-'}</td>
+      <td>${escapeHtml(s.phone)||'-'}</td>
+      <td>${rate===null?'기록 없음':rate+'%'}</td>
+      <td>${avg===null?'기록 없음':`<span class="score-num ${avg>=80?'score-high':avg>=60?'score-mid':'score-low'}">${avg}점</span>`}</td>
+      <td><button class="btn btn-warn btn-sm" onclick="deleteStudent(${s.id})">삭제</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+function deleteStudent(id){
+  const s = findStudent(id);
+  if(!s) return;
+  if(!confirm(`'${s.name}' 학생을 삭제하시겠습니까?\n관련된 출결·성적 기록도 함께 삭제됩니다.`)) return;
+  students = students.filter(x=>x.id!==id);
+  attendance = attendance.filter(a=>a.studentId!==id);
+  scores = scores.filter(sc=>sc.studentId!==id);
+  renderStudentTable();
+  renderStudentFilters();
+  renderAttendanceTab();
+  renderScoreTab();
+}
+
+/* =========================================================
+   출결 관리
+========================================================= */
+document.getElementById('attDate').value = todayStr();
+
+function renderAttendanceTab(){
+  // 학생 선택 버튼
+  const pick = document.getElementById('attStudentPick');
+  if(students.length===0){
+    pick.innerHTML = `<div class="empty">먼저 '학생 명단' 탭에서 학생을 등록해 주세요.</div>`;
+    document.getElementById('attStatusArea').innerHTML='';
+  } else {
+    pick.innerHTML = students.map(s=>
+      `<button class="${attSelectedStudentId===s.id?'selected':''}" onclick="selectAttStudent(${s.id})">${escapeHtml(s.name)}</button>`
+    ).join('');
+    renderAttStatusArea();
+  }
+  renderStudentFilters();
+  renderAttStats();
+  renderAttTable();
+}
+
+function selectAttStudent(id){
+  attSelectedStudentId = id;
+  renderAttendanceTab();
+}
+
+function renderAttStatusArea(){
+  const area = document.getElementById('attStatusArea');
+  if(attSelectedStudentId===null){ area.innerHTML=''; return; }
+  const s = findStudent(attSelectedStudentId);
+  const date = document.getElementById('attDate').value;
+  const existing = attendance.find(a=>a.studentId===attSelectedStudentId && a.date===date);
+  area.innerHTML = `
+    <p style="margin:16px 0 8px;font-weight:700;">${escapeHtml(s.name)} 학생 — ${fmtDate(date)} 출결 상태</p>
+    <div class="seg">
+      <button class="on-present ${existing&&existing.status==='출석'?'selected':''}" onclick="setAttendance('출석')">출석</button>
+      <button class="on-late ${existing&&existing.status==='지각'?'selected':''}" onclick="setAttendance('지각')">지각</button>
+      <button class="on-absent ${existing&&existing.status==='결석'?'selected':''}" onclick="setAttendance('결석')">결석</button>
+    </div>
+  `;
+}
+
+document.getElementById('attDate').addEventListener('change', ()=>{
+  renderAttStatusArea();
+  renderAttTable();
+  renderAttStats();
+});
+
+function setAttendance(status){
+  const date = document.getElementById('attDate').value;
+  if(!date){ alert('날짜를 선택해 주세요.'); return; }
+  const idx = attendance.findIndex(a=>a.studentId===attSelectedStudentId && a.date===date);
+  if(idx>-1){
+    attendance[idx].status = status;
+  } else {
+    attendance.push({id:nextAttId++, studentId:attSelectedStudentId, date, status});
+  }
+  renderAttStatusArea();
+  renderAttTable();
+  renderAttStats();
+  renderStudentTable();
+}
+
+function renderStudentFilters(){
+  const attSel = document.getElementById('attFilterStudent');
+  const scoreSel = document.getElementById('scoreFilterStudent');
+  const prevAtt = attSel.value, prevScore = scoreSel.value;
+  attSel.innerHTML = '<option value="">전체 학생</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  scoreSel.innerHTML = '<option value="">전체 학생</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  attSel.value = prevAtt; scoreSel.value = prevScore;
+}
+
+document.getElementById('attFilterStudent').addEventListener('change', renderAttTable);
+
+function renderAttStats(){
+  const total = attendance.length;
+  const present = attendance.filter(a=>a.status==='출석').length;
+  const late = attendance.filter(a=>a.status==='지각').length;
+  const absent = attendance.filter(a=>a.status==='결석').length;
+  document.getElementById('attStatRow').innerHTML = `
+    <div class="stat-card"><div class="label">전체 기록</div><div class="value">${total}건</div></div>
+    <div class="stat-card"><div class="label">출석</div><div class="value" style="color:var(--accent);">${present}건</div></div>
+    <div class="stat-card"><div class="label">지각</div><div class="value" style="color:var(--late);">${late}건</div></div>
+    <div class="stat-card"><div class="label">결석</div><div class="value" style="color:var(--warn);">${absent}건</div></div>
+  `;
+}
+
+function renderAttTable(){
+  const filterId = document.getElementById('attFilterStudent').value;
+  let list = [...attendance];
+  if(filterId) list = list.filter(a=>String(a.studentId)===filterId);
+  list.sort((a,b)=> b.date.localeCompare(a.date));
+
+  const wrap = document.getElementById('attTableWrap');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty">출결 기록이 없습니다.</div>`;
+    return;
+  }
+  let html = `<table><thead><tr><th>날짜</th><th>이름</th><th>학년</th><th>출결 상태</th></tr></thead><tbody>`;
+  list.forEach(a=>{
+    const s = findStudent(a.studentId);
+    if(!s) return;
+    const badgeClass = a.status==='출석'?'badge-present':a.status==='지각'?'badge-late':'badge-absent';
+    html += `<tr>
+      <td class="score-num">${fmtDate(a.date)}</td>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.grade)}</td>
+      <td><span class="badge ${badgeClass}">${a.status}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+document.getElementById('attExportBtn').addEventListener('click', ()=>{
+  const rows = [['날짜','이름','학년','출결상태']];
+  attendance.slice().sort((a,b)=>b.date.localeCompare(a.date)).forEach(a=>{
+    const s = findStudent(a.studentId);
+    if(s) rows.push([a.date, s.name, s.grade, a.status]);
+  });
+  downloadCSV('찬스수학_출결기록.csv', rows);
+});
+
+/* =========================================================
+   성적 관리
+========================================================= */
+document.getElementById('scoreDate').value = todayStr();
+
+function renderScoreTab(){
+  const pick = document.getElementById('scoreStudentPick');
+  if(students.length===0){
+    pick.innerHTML = `<div class="empty">먼저 '학생 명단' 탭에서 학생을 등록해 주세요.</div>`;
+  } else {
+    pick.innerHTML = students.map(s=>
+      `<button class="${scoreSelectedStudentId===s.id?'selected':''}" onclick="selectScoreStudent(${s.id})">${escapeHtml(s.name)}</button>`
+    ).join('');
+  }
+  renderStudentFilters();
+  renderScoreStats();
+  renderScoreTable();
+}
+
+function selectScoreStudent(id){
+  scoreSelectedStudentId = id;
+  renderScoreTab();
+}
+
+document.getElementById('addScoreBtn').addEventListener('click', ()=>{
+  if(scoreSelectedStudentId===null){ alert('학생을 먼저 선택해 주세요.'); return; }
+  const date = document.getElementById('scoreDate').value;
+  const examName = document.getElementById('scoreExamName').value.trim();
+  const scoreValue = document.getElementById('scoreValue').value;
+  const memo = document.getElementById('scoreMemo').value.trim();
+  if(!examName){ alert('시험명을 입력해 주세요.'); return; }
+  if(scoreValue===''||isNaN(scoreValue)||scoreValue<0||scoreValue>100){ alert('점수는 0~100 사이 숫자로 입력해 주세요.'); return; }
+
+  scores.push({id:nextScoreId++, studentId:scoreSelectedStudentId, date, examName, score:Number(scoreValue), memo});
+  document.getElementById('scoreExamName').value='';
+  document.getElementById('scoreValue').value='';
+  document.getElementById('scoreMemo').value='';
+  renderScoreTable();
+  renderScoreStats();
+  renderStudentTable();
+});
+
+document.getElementById('scoreFilterStudent').addEventListener('change', renderScoreTable);
+
+function renderScoreStats(){
+  const filterId = document.getElementById('scoreFilterStudent') ? document.getElementById('scoreFilterStudent').value : '';
+  let list = [...scores];
+  if(filterId) list = list.filter(s=>String(s.studentId)===filterId);
+  const total = list.length;
+  const avg = total ? Math.round(list.reduce((a,b)=>a+b.score,0)/total) : 0;
+  const max = total ? Math.max(...list.map(s=>s.score)) : 0;
+  const min = total ? Math.min(...list.map(s=>s.score)) : 0;
+  document.getElementById('scoreStatRow').innerHTML = `
+    <div class="stat-card"><div class="label">전체 기록</div><div class="value">${total}건</div></div>
+    <div class="stat-card"><div class="label">평균 점수</div><div class="value">${total?avg+'점':'-'}</div></div>
+    <div class="stat-card"><div class="label">최고 점수</div><div class="value" style="color:var(--accent);">${total?max+'점':'-'}</div></div>
+    <div class="stat-card"><div class="label">최저 점수</div><div class="value" style="color:var(--warn);">${total?min+'점':'-'}</div></div>
+  `;
+}
+
+function renderScoreTable(){
+  const filterId = document.getElementById('scoreFilterStudent').value;
+  let list = [...scores];
+  if(filterId) list = list.filter(s=>String(s.studentId)===filterId);
+  list.sort((a,b)=> b.date.localeCompare(a.date));
+
+  const wrap = document.getElementById('scoreTableWrap');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty">성적 기록이 없습니다.</div>`;
+    return;
+  }
+  let html = `<table><thead><tr><th>날짜</th><th>이름</th><th>시험명 / 단원</th><th>점수</th><th>비고</th><th></th></tr></thead><tbody>`;
+  list.forEach(sc=>{
+    const s = findStudent(sc.studentId);
+    if(!s) return;
+    const cls = sc.score>=80?'score-high':sc.score>=60?'score-mid':'score-low';
+    html += `<tr>
+      <td class="score-num">${fmtDate(sc.date)}</td>
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(sc.examName)}</td>
+      <td><span class="score-num ${cls}">${sc.score}점</span></td>
+      <td>${escapeHtml(sc.memo)||'-'}</td>
+      <td><button class="btn btn-warn btn-sm" onclick="deleteScore(${sc.id})">삭제</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+function deleteScore(id){
+  if(!confirm('이 성적 기록을 삭제하시겠습니까?')) return;
+  scores = scores.filter(s=>s.id!==id);
+  renderScoreTable();
+  renderScoreStats();
+  renderStudentTable();
+}
+
+document.getElementById('scoreExportBtn').addEventListener('click', ()=>{
+  const rows = [['날짜','이름','시험명','점수','비고']];
+  scores.slice().sort((a,b)=>b.date.localeCompare(a.date)).forEach(sc=>{
+    const s = findStudent(sc.studentId);
+    if(s) rows.push([sc.date, s.name, sc.examName, sc.score, sc.memo]);
+  });
+  downloadCSV('찬스수학_성적기록.csv', rows);
+});
+
+/* =========================================================
+   초기 실행
+========================================================= */
+(function init(){
+  const d = new Date();
+  document.getElementById('todayLabel').textContent =
+    `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} 기준`;
+  renderStudentTable();
+  renderStudentFilters();
+})();
+</script>
+</body>
+</html>
