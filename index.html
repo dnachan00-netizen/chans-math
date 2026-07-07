@@ -152,6 +152,7 @@
         </div>
       </div>
       <button class="btn btn-primary" id="addStudentBtn">학생 등록하기</button>
+      <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;margin-left:8px;">수정 취소</button>
     </div>
     <div class="panel">
       <div class="toolbar">
@@ -222,6 +223,7 @@ let attendance = [];
 let scores = [];
 let attSelectedStudentId = null;
 let scoreSelectedStudentId = null;
+let editingStudentId = null;
 
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function fmtDate(str){ if(!str) return '-'; const [y,m,d]=str.split('-'); return `${y}.${m}.${d}`; }
@@ -308,11 +310,40 @@ document.getElementById('addStudentBtn').addEventListener('click', async ()=>{
   const phone = document.getElementById('stuPhone').value.trim();
   const classTime = document.getElementById('stuClassTime').value;
   if(!name){ alert('학생 이름을 입력해 주세요.'); return; }
-  const { error } = await sb.from('students').insert({ name, grade, school, phone, class_time: classTime || null });
-  if(error){ alert('등록 실패: '+error.message); return; }
+
+  if(editingStudentId){
+    const { error } = await sb.from('students').update({ name, grade, school, phone, class_time: classTime || null }).eq('id', editingStudentId);
+    if(error){ alert('수정 실패: '+error.message); return; }
+    exitEditMode();
+  } else {
+    const { error } = await sb.from('students').insert({ name, grade, school, phone, class_time: classTime || null });
+    if(error){ alert('등록 실패: '+error.message); return; }
+  }
   document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuClassTime').value='';
   await loadStudents(); renderStudentTable(); renderStudentFilters();
 });
+
+document.getElementById('cancelEditBtn').addEventListener('click', exitEditMode);
+
+function editStudent(id){
+  const s = findStudent(id); if(!s) return;
+  editingStudentId = id;
+  document.getElementById('stuName').value = s.name || '';
+  document.getElementById('stuGrade').value = s.grade || '';
+  document.getElementById('stuSchool').value = s.school || '';
+  document.getElementById('stuPhone').value = s.phone || '';
+  document.getElementById('stuClassTime').value = s.class_time || '';
+  document.getElementById('addStudentBtn').textContent = '수정 완료';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.getElementById('stuName').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function exitEditMode(){
+  editingStudentId = null;
+  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuGrade').value='중1';
+  document.getElementById('addStudentBtn').textContent = '학생 등록하기';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
 
 document.getElementById('studentSearch').addEventListener('input', renderStudentTable);
 
@@ -338,7 +369,7 @@ function renderStudentTable(){
       <td>${escapeHtml(s.phone)||'-'}</td>
       <td>${rate===null?'기록 없음':rate+'%'}</td>
       <td>${avg===null?'기록 없음':`<span class="score-num ${avg>=80?'score-high':avg>=60?'score-mid':'score-low'}">${avg}점</span>`}</td>
-      <td><button class="btn btn-warn btn-sm" onclick="deleteStudent('${s.id}')">삭제</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="editStudent('${s.id}')" style="margin-right:6px;">수정</button><button class="btn btn-warn btn-sm" onclick="deleteStudent('${s.id}')">삭제</button></td>
     </tr>`;
   });
   html += `</tbody></table>`;
