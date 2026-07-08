@@ -78,6 +78,18 @@
   .dday-soon{background:var(--late-soft);color:var(--late);}
   .dday-over{background:var(--warn-soft);color:var(--warn);}
   .urgent-banner{display:flex;align-items:center;gap:10px;background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13.5px;font-weight:700;}
+  .kpi-wrap{padding:20px 32px 0;max-width:1180px;margin:0 auto;}
+  .kpi-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
+  .kpi-card{background:var(--ink);color:#f6f5f2;border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;cursor:default;}
+  .kpi-card.clickable{cursor:pointer;}
+  .kpi-card .kpi-label{font-size:12px;color:#c9cbd9;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .kpi-card .kpi-value{font-family:var(--mono);font-size:26px;font-weight:700;}
+  .kpi-card .kpi-value .unit{font-size:13px;font-weight:600;color:#c9cbd9;margin-left:3px;}
+  .kpi-card .kpi-sub{font-size:11.5px;color:#8890ab;margin-top:4px;}
+  .kpi-card.warn{background:var(--warn);}
+  .kpi-card.warn .kpi-label, .kpi-card.warn .kpi-sub{color:rgba(255,255,255,0.75);}
+  .kpi-card.accent{background:var(--accent);}
+  .kpi-card.accent .kpi-label, .kpi-card.accent .kpi-sub{color:rgba(255,255,255,0.75);}
   .hw-file-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .hw-file-name{font-size:12.5px;color:var(--ink-soft);}
   #detailModalOverlay{position:fixed;inset:0;background:rgba(27,35,64,0.55);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:40px 16px;overflow-y:auto;}
@@ -139,6 +151,8 @@
   <button class="tab-btn" data-tab="scores"><span class="num">03</span>성적 관리</button>
   <button class="tab-btn" data-tab="homework"><span class="num">04</span>숙제 관리</button>
 </nav>
+
+<div class="kpi-wrap"><div class="kpi-bar" id="kpiBar"></div></div>
 
 <main>
   <section id="tab-students" class="tab-panel">
@@ -418,6 +432,7 @@ async function enterApp(session){
 async function refreshAll(){
   await Promise.all([loadStudents(), loadAttendance(), loadScores()]);
   renderStudentTable(); renderStudentFilters(); renderAttendanceTab(); renderScoreTab();
+  renderKpiBar();
 }
 async function loadStudents(){
   const { data, error } = await sb.from('students').select('*').order('created_at', {ascending:true});
@@ -798,23 +813,80 @@ async function loadAssignmentsAndSubmissions(){
   submissions = sData || [];
 }
 
+// 오늘 요일 기준으로 수업이 있는 반 그룹(월목/화금/토일)을 반환. 수업 없는 요일이면 null
+function todayClassGroup(){
+  const day = new Date().getDay(); // 0=일 1=월 2=화 3=수 4=목 5=금 6=토
+  if(day===1 || day===4) return '월목';
+  if(day===2 || day===5) return '화금';
+  if(day===0 || day===6) return '토일';
+  return null; // 수요일 등 수업 없는 날
+}
+
+function countUrgentPending(){
+  let n = 0;
+  assignments.forEach(hw=>{
+    const dd = ddayInfo(hw.due_date);
+    if(!dd || !dd.urgent) return;
+    hwTargetStudents(hw).forEach(s=>{
+      const sub = submissions.find(x=>x.assignment_id===hw.id && x.student_id===s.id);
+      if(!(sub && sub.submitted_at)) n++;
+    });
+  });
+  return n;
+}
+
+function renderKpiBar(){
+  const bar = document.getElementById('kpiBar');
+  if(!bar || currentRole !== 'staff') return;
+
+  // 카드1: 오늘 출석 체크 필요
+  const group = todayClassGroup();
+  const scheduledToday = group ? students.filter(s=>s.class_time && s.class_time.startsWith(group)) : [];
+  const uncheckedToday = scheduledToday.filter(s=>!attendance.some(a=>a.studentId===s.id && a.date===todayStr()));
+
+  // 카드2: 이번 달 평균 출석률
+  const thisMonth = todayStr().slice(0,7); // YYYY-MM
+  const monthAtt = attendance.filter(a=>a.date && a.date.startsWith(thisMonth));
+  const monthRate = monthAtt.length ? Math.round(monthAtt.filter(a=>a.status==='출석').length / monthAtt.length * 100) : null;
+
+  // 카드3: 마감임박 숙제(미제출)
+  const urgentCount = countUrgentPending();
+
+  // 카드4: 전체 학생 수
+  const totalStudents = students.length;
+
+  bar.innerHTML = `
+    <div class="kpi-card ${group ? (uncheckedToday.length>0 ? 'warn':'accent') : ''} clickable" onclick="document.querySelector('.tab-btn[data-tab=attendance]').click()">
+      <div class="kpi-label">📋 오늘 출석 체크</div>
+      <div class="kpi-value">${group ? uncheckedToday.length : '–'}<span class="unit">${group ? '명 남음' : ''}</span></div>
+      <div class="kpi-sub">${group ? `오늘(${group}) 수업 대상 ${scheduledToday.length}명 중` : '오늘은 수업 없는 요일'}</div>
+    </div>
+    <div class="kpi-card clickable" onclick="document.querySelector('.tab-btn[data-tab=attendance]').click()">
+      <div class="kpi-label">📊 이번 달 평균 출석률</div>
+      <div class="kpi-value">${monthRate===null?'–':monthRate}<span class="unit">${monthRate===null?'':'%'}</span></div>
+      <div class="kpi-sub">${monthAtt.length}건 기록 기준</div>
+    </div>
+    <div class="kpi-card ${urgentCount>0?'warn':''} clickable" onclick="document.querySelector('.tab-btn[data-tab=homework]').click()">
+      <div class="kpi-label">⏰ 마감임박 숙제</div>
+      <div class="kpi-value">${urgentCount}<span class="unit">건</span></div>
+      <div class="kpi-sub">오늘~2일 이내, 미제출 기준</div>
+    </div>
+    <div class="kpi-card clickable" onclick="document.querySelector('.tab-btn[data-tab=students]').click()">
+      <div class="kpi-label">👥 전체 학생 수</div>
+      <div class="kpi-value">${totalStudents}<span class="unit">명</span></div>
+      <div class="kpi-sub">재원생 기준</div>
+    </div>`;
+}
+
 // 선생님 화면 전체에서 볼 수 있는 마감임박 알림 벨 — 반/학생 상관없이 임박+미제출 건수를 집계
 function updateAlertBell(){
   const bell = document.getElementById('alertBell');
   if(currentRole !== 'staff'){ bell.style.display = 'none'; return; }
-  let urgentCount = 0;
-  assignments.forEach(hw=>{
-    const dd = ddayInfo(hw.due_date);
-    if(!dd || !dd.urgent) return;
-    const targets = hwTargetStudents(hw);
-    targets.forEach(s=>{
-      const sub = submissions.find(x=>x.assignment_id===hw.id && x.student_id===s.id);
-      if(!(sub && sub.submitted_at)) urgentCount++;
-    });
-  });
+  const urgentCount = countUrgentPending();
   bell.style.display = 'inline-flex';
   bell.classList.toggle('on', urgentCount>0);
   document.getElementById('alertBellCount').textContent = urgentCount;
+  renderKpiBar();
 }
 
 function goToUrgentHomework(){
