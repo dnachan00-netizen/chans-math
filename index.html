@@ -119,6 +119,16 @@
   .chart-panel{background:#fcfcfb;border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px;}
   .chart-panel h3{margin:0 0 12px;font-size:14.5px;}
   .chart-panel canvas{max-height:220px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-head{font-size:11px;color:var(--ink-soft);text-align:center;font-family:var(--mono);padding-bottom:2px;}
+  .cal-cell{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-family:var(--mono);color:#fff;background:#e4e2da;}
+  .cal-cell.empty{background:transparent;}
+  .cal-cell.present{background:#2f5d50;}
+  .cal-cell.late{background:#b8862f;}
+  .cal-cell.absent{background:#b3452e;}
+  .cal-cell.none{background:#e4e2da;color:var(--ink-soft);}
+  .cal-cell.today-marker{box-shadow:0 0 0 2px var(--accent) inset;}
+  .cal-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle;}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
   #loginBox{background:var(--panel);padding:40px;border-radius:16px;width:100%;max-width:360px;}
@@ -191,6 +201,7 @@
         </div>
         <div><label>학교</label><input type="text" id="stuSchool" placeholder="예: 대구월성중학교"></div>
         <div><label>연락처 (선택)</label><input type="text" id="stuPhone" placeholder="010-0000-0000"></div>
+        <div><label>보호자 연락처 (선택)</label><input type="text" id="stuGuardianPhone" placeholder="010-0000-0000"></div>
         <div><label>반</label>
           <select id="stuClassTime">
             <option value="">미배정</option>
@@ -345,6 +356,23 @@
     <p class="sub" id="detailStuMeta"></p>
     <div class="stat-row" id="detailStatRow"></div>
     <div class="chart-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;">출결 캘린더</h3>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-ghost btn-sm" onclick="shiftDetailCalMonth(-1)">‹</button>
+          <span id="detailCalLabel" style="font-family:var(--mono);font-size:13px;min-width:70px;text-align:center;"></span>
+          <button class="btn btn-ghost btn-sm" onclick="shiftDetailCalMonth(1)">›</button>
+        </div>
+      </div>
+      <div id="detailCalGrid"></div>
+      <div style="display:flex;gap:14px;margin-top:12px;font-size:11.5px;color:var(--ink-soft);">
+        <span><span class="cal-dot" style="background:#2f5d50;"></span> 출석</span>
+        <span><span class="cal-dot" style="background:#b8862f;"></span> 지각</span>
+        <span><span class="cal-dot" style="background:#b3452e;"></span> 결석</span>
+        <span><span class="cal-dot" style="background:#e4e2da;"></span> 기록 없음</span>
+      </div>
+    </div>
+    <div class="chart-panel">
       <h3>출결 추이 (최근 기록순)</h3>
       <canvas id="detailAttChart"></canvas>
     </div>
@@ -497,18 +525,19 @@ document.getElementById('addStudentBtn').addEventListener('click', async ()=>{
   const grade = document.getElementById('stuGrade').value;
   const school = document.getElementById('stuSchool').value.trim();
   const phone = document.getElementById('stuPhone').value.trim();
+  const guardianPhone = document.getElementById('stuGuardianPhone').value.trim();
   const classTime = document.getElementById('stuClassTime').value;
   if(!name){ alert('학생 이름을 입력해 주세요.'); return; }
 
   if(editingStudentId){
-    const { error } = await sb.from('students').update({ name, grade, school, phone, class_time: classTime || null }).eq('id', editingStudentId);
+    const { error } = await sb.from('students').update({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null }).eq('id', editingStudentId);
     if(error){ alert('수정 실패: '+error.message); return; }
     exitEditMode();
   } else {
-    const { error } = await sb.from('students').insert({ name, grade, school, phone, class_time: classTime || null });
+    const { error } = await sb.from('students').insert({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null });
     if(error){ alert('등록 실패: '+error.message); return; }
   }
-  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuClassTime').value='';
+  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value='';
   await loadStudents(); renderStudentTable(); renderStudentFilters();
 });
 
@@ -521,6 +550,7 @@ function editStudent(id){
   document.getElementById('stuGrade').value = s.grade || '';
   document.getElementById('stuSchool').value = s.school || '';
   document.getElementById('stuPhone').value = s.phone || '';
+  document.getElementById('stuGuardianPhone').value = s.guardian_phone || '';
   document.getElementById('stuClassTime').value = s.class_time || '';
   document.getElementById('addStudentBtn').textContent = '수정 완료';
   document.getElementById('cancelEditBtn').style.display = 'inline-block';
@@ -529,7 +559,7 @@ function editStudent(id){
 
 function exitEditMode(){
   editingStudentId = null;
-  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuGrade').value='중1';
+  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuGrade').value='중1';
   document.getElementById('addStudentBtn').textContent = '학생 등록하기';
   document.getElementById('cancelEditBtn').style.display = 'none';
 }
@@ -578,16 +608,23 @@ async function deleteStudent(id){
 ========================================================= */
 let detailAttChartInstance = null;
 let detailScoreChartInstance = null;
+let detailCalAttList = [];
+let detailCalDate = new Date();
 
 function openStudentDetail(id){
   const s = findStudent(id); if(!s) return;
 
   document.getElementById('detailStuName').textContent = s.name;
   document.getElementById('detailStuMeta').textContent =
-    `${s.grade || ''} · ${s.school || '학교 미입력'} · ${s.class_time || '반 미배정'}`;
+    `${s.grade || ''} · ${s.school || '학교 미입력'} · ${s.class_time || '반 미배정'}${s.guardian_phone ? ' · 보호자 '+s.guardian_phone : ''}`;
 
   const attList = attendance.filter(a=>a.studentId===id).slice().sort((a,b)=>a.date.localeCompare(b.date));
   const scoreList = scores.filter(sc=>sc.studentId===id).slice().sort((a,b)=>a.date.localeCompare(b.date));
+
+  // 캘린더: 가장 최근 출결 기록이 있는 달을 기본으로 보여주고, 없으면 이번 달
+  detailCalAttList = attList;
+  detailCalDate = attList.length ? new Date(attList[attList.length-1].date) : new Date();
+  renderDetailCalendar();
 
   const total = attList.length;
   const presentCount = attList.filter(a=>a.status==='출석').length;
@@ -657,6 +694,36 @@ function openStudentDetail(id){
   }
 
   document.getElementById('detailModalOverlay').classList.add('open');
+}
+
+function renderDetailCalendar(){
+  const year = detailCalDate.getFullYear();
+  const month = detailCalDate.getMonth(); // 0-indexed
+  document.getElementById('detailCalLabel').textContent = `${year}년 ${month+1}월`;
+
+  const statusByDate = {};
+  detailCalAttList.forEach(a=>{ statusByDate[a.date] = a.status; });
+
+  const firstDay = new Date(year, month, 1).getDay(); // 0=일
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayS = todayStr();
+
+  let html = '';
+  ['일','월','화','수','목','금','토'].forEach(d=> html += `<div class="cal-head">${d}</div>`);
+  for(let i=0;i<firstDay;i++) html += `<div class="cal-cell empty"></div>`;
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const status = statusByDate[dateStr];
+    const cls = status==='출석' ? 'present' : status==='지각' ? 'late' : status==='결석' ? 'absent' : 'none';
+    const isToday = dateStr===todayS ? ' today-marker' : '';
+    html += `<div class="cal-cell ${cls}${isToday}" title="${dateStr}${status?' · '+status:''}">${d}</div>`;
+  }
+  document.getElementById('detailCalGrid').innerHTML = html;
+}
+
+function shiftDetailCalMonth(delta){
+  detailCalDate = new Date(detailCalDate.getFullYear(), detailCalDate.getMonth()+delta, 1);
+  renderDetailCalendar();
 }
 
 function closeStudentDetail(){
