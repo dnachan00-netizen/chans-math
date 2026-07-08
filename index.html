@@ -27,6 +27,7 @@
   header .today{font-family:var(--mono);font-size:13px;color:#c9cbd9;}
   header .who{font-size:13px;color:#c9cbd9;}
   header .signout{background:transparent;border:1px solid #4a5378;color:#f6f5f2;padding:6px 12px;border-radius:6px;font-size:12.5px;cursor:pointer;}
+  #alertBell.on{border-color:var(--warn);background:rgba(179,69,46,0.25);}
   nav.tabs{display:flex;gap:4px;padding:16px 32px 0;background:var(--paper);border-bottom:1px solid var(--line);overflow-x:auto;}
   nav.tabs button{border:none;background:transparent;padding:12px 18px;font-size:15px;font-weight:600;color:var(--ink-soft);cursor:pointer;border-radius:10px 10px 0 0;position:relative;white-space:nowrap;font-family:var(--sans);}
   nav.tabs button .num{font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:6px;}
@@ -122,6 +123,9 @@
     <h1>찬스수학 통합 학생 관리 프로그램</h1>
   </div>
   <div class="right">
+    <button id="alertBell" class="signout" style="display:none;position:relative;" onclick="goToUrgentHomework()">
+      🔔 마감임박 <span id="alertBellCount" style="background:var(--warn);color:#fff;border-radius:20px;padding:1px 7px;font-size:11px;margin-left:4px;">0</span>
+    </button>
     <span class="who" id="whoLabel"></span>
     <span class="today" id="todayLabel"></span>
     <button class="signout" id="signOutBtn">로그아웃</button>
@@ -794,6 +798,30 @@ async function loadAssignmentsAndSubmissions(){
   submissions = sData || [];
 }
 
+// 선생님 화면 전체에서 볼 수 있는 마감임박 알림 벨 — 반/학생 상관없이 임박+미제출 건수를 집계
+function updateAlertBell(){
+  const bell = document.getElementById('alertBell');
+  if(currentRole !== 'staff'){ bell.style.display = 'none'; return; }
+  let urgentCount = 0;
+  assignments.forEach(hw=>{
+    const dd = ddayInfo(hw.due_date);
+    if(!dd || !dd.urgent) return;
+    const targets = hwTargetStudents(hw);
+    targets.forEach(s=>{
+      const sub = submissions.find(x=>x.assignment_id===hw.id && x.student_id===s.id);
+      if(!(sub && sub.submitted_at)) urgentCount++;
+    });
+  });
+  bell.style.display = 'inline-flex';
+  bell.classList.toggle('on', urgentCount>0);
+  document.getElementById('alertBellCount').textContent = urgentCount;
+}
+
+function goToUrgentHomework(){
+  const tabBtn = document.querySelector('#staffView .tab-btn[data-tab="homework"]');
+  if(tabBtn) tabBtn.click();
+}
+
 document.getElementById('addHwBtn').addEventListener('click', async ()=>{
   const title = document.getElementById('hwTitle').value.trim();
   const dueDate = document.getElementById('hwDueDate').value;
@@ -829,6 +857,7 @@ async function deleteAssignment(id){
 
 function renderHwList(){
   const wrap = document.getElementById('hwListWrap');
+  updateAlertBell();
   if(assignments.length===0){ wrap.innerHTML = `<div class="empty">등록된 숙제가 없습니다.</div>`; return; }
   let html = '';
   assignments.forEach(hw=>{
