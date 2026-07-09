@@ -179,6 +179,7 @@
   <button class="tab-btn" data-tab="attendance"><span class="num">02</span>출결 관리</button>
   <button class="tab-btn" data-tab="scores"><span class="num">03</span>성적 관리</button>
   <button class="tab-btn" data-tab="homework"><span class="num">04</span>숙제 관리</button>
+  <button class="tab-btn" data-tab="counseling"><span class="num">05</span>상담 일지</button>
 </nav>
 
 <div class="content-area">
@@ -313,6 +314,30 @@
       <div id="hwListWrap"></div>
     </div>
   </section>
+
+  <section id="tab-counseling" class="tab-panel" style="display:none;">
+    <div class="panel">
+      <h2>상담 일지 작성</h2>
+      <p class="desc">저장하면 노션 '상담 메모' 데이터베이스에도 자동으로 기록됩니다.</p>
+      <div class="grid-form">
+        <div><label>학생</label>
+          <select id="cnStudent"><option value="">학생 선택</option></select>
+        </div>
+        <div><label>상담 날짜</label><input type="date" id="cnDate"></div>
+        <div><label>상담 대상</label>
+          <select id="cnTarget"><option value="학부모">학부모</option><option value="학생 본인">학생 본인</option></select>
+        </div>
+        <div><label>제목</label><input type="text" id="cnTitle" placeholder="예: 2학기 학습 방향 상담"></div>
+        <div style="grid-column:1/-1;"><label>내용</label><textarea id="cnContent" rows="4" placeholder="상담 내용을 적어주세요."></textarea></div>
+        <div style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="cnFollowUp" style="width:auto;"><label style="margin:0;" for="cnFollowUp">후속 조치 필요</label></div>
+      </div>
+      <button class="btn btn-primary" id="addCnBtn">상담 일지 저장</button>
+    </div>
+    <div class="panel">
+      <h2 style="margin:0 0 16px;">상담 일지 목록</h2>
+      <div id="cnListWrap"></div>
+    </div>
+  </section>
 </main>
 </div><!-- /content-area -->
 </div><!-- /staffView -->
@@ -398,6 +423,7 @@ let currentRole = null;
 let currentStudentId = null;
 let assignments = [];
 let submissions = [];
+let counselingNotes = [];
 const HW_BUCKET = 'homework-submissions';
 
 // 마감일 기준 D-day 정보 계산 (오늘/내일/모레는 임박으로 강조)
@@ -508,6 +534,7 @@ document.querySelectorAll('#staffView .tab-btn').forEach(btn=>{
     if(btn.dataset.tab==='attendance') renderAttendanceTab();
     if(btn.dataset.tab==='scores') renderScoreTab();
     if(btn.dataset.tab==='homework') renderHwList();
+    if(btn.dataset.tab==='counseling') renderCounselingTab();
   });
 });
 
@@ -900,6 +927,76 @@ async function loadAssignmentsAndSubmissions(){
   const { data: sData, error: sErr } = await sb.from('submissions').select('*');
   if(sErr){ alert('제출 현황을 불러오지 못했습니다: '+sErr.message); return; }
   submissions = sData || [];
+}
+
+/* =========================================================
+   상담 일지 (노션 '상담 메모' DB 자동 동기화)
+========================================================= */
+async function loadCounselingNotes(){
+  const { data, error } = await sb.from('counseling_notes').select('*').order('note_date', {ascending:false});
+  if(error){ alert('상담 일지를 불러오지 못했습니다: '+error.message); return; }
+  counselingNotes = (data || []).map(n=>({
+    ...n, studentId:n.student_id, followUpNeeded:n.follow_up_needed, notionPageId:n.notion_page_id, date:n.note_date
+  }));
+}
+
+function renderCounselingTab(){
+  // 학생 선택 드롭다운 채우기 (한 번만 채워도 되지만 학생이 늘어날 수 있어 매번 갱신)
+  const sel = document.getElementById('cnStudent');
+  const prevVal = sel.value;
+  sel.innerHTML = '<option value="">학생 선택</option>' +
+    students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.class_time)||'반 미배정'})</option>`).join('');
+  if(prevVal) sel.value = prevVal;
+  if(!document.getElementById('cnDate').value) document.getElementById('cnDate').value = todayStr();
+
+  loadCounselingNotes().then(renderCounselingList);
+}
+
+function renderCounselingList(){
+  const wrap = document.getElementById('cnListWrap');
+  if(counselingNotes.length===0){ wrap.innerHTML = `<div class="empty">작성된 상담 일지가 없습니다.</div>`; return; }
+  let html = `<table><thead><tr><th>날짜</th><th>학생</th><th>제목</th><th>대상</th><th>후속조치</th><th>노션 동기화</th><th></th></tr></thead><tbody>`;
+  counselingNotes.forEach(n=>{
+    const s = findStudent(n.studentId);
+    html += `<tr>
+      <td>${fmtDate(n.date)}</td>
+      <td>${s ? escapeHtml(s.name) : '(삭제된 학생)'}</td>
+      <td>${escapeHtml(n.title)}</td>
+      <td>${escapeHtml(n.target)}</td>
+      <td>${n.followUpNeeded ? '<span class="badge badge-late">필요</span>' : '-'}</td>
+      <td>${n.notionPageId ? '<span class="badge badge-present">완료</span>' : '<span class="badge badge-late">대기중</span>'}</td>
+      <td><button class="btn btn-warn btn-sm" onclick="deleteCounselingNote('${n.id}')">삭제</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+document.getElementById('addCnBtn').addEventListener('click', async ()=>{
+  const studentId = document.getElementById('cnStudent').value;
+  const date = document.getElementById('cnDate').value;
+  const target = document.getElementById('cnTarget').value;
+  const title = document.getElementById('cnTitle').value.trim();
+  const content = document.getElementById('cnContent').value.trim();
+  const followUp = document.getElementById('cnFollowUp').checked;
+  if(!studentId){ alert('학생을 선택해 주세요.'); return; }
+  if(!title){ alert('제목을 입력해 주세요.'); return; }
+
+  const { error } = await sb.from('counseling_notes').insert({
+    student_id: studentId, note_date: date || todayStr(), target, title, content, follow_up_needed: followUp
+  });
+  if(error){ alert('저장 실패: '+error.message); return; }
+
+  document.getElementById('cnTitle').value=''; document.getElementById('cnContent').value=''; document.getElementById('cnFollowUp').checked=false;
+  await loadCounselingNotes(); renderCounselingList();
+  alert('상담 일지가 저장됐습니다. 잠시 후 노션에도 자동으로 반영됩니다.');
+});
+
+async function deleteCounselingNote(id){
+  if(!confirm('이 상담 일지를 삭제하시겠습니까? (노션에 이미 동기화된 페이지는 별도로 지워야 합니다)')) return;
+  const { error } = await sb.from('counseling_notes').delete().eq('id', id);
+  if(error){ alert('삭제 실패: '+error.message); return; }
+  await loadCounselingNotes(); renderCounselingList();
 }
 
 // 오늘 요일 기준으로 수업이 있는 반 그룹(월목/화금/토일)을 반환. 수업 없는 요일이면 null
