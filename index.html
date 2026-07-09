@@ -1116,6 +1116,7 @@ async function renderHomeStudentList(){
       </div>
       <div class="hs-quick-hw" id="hsQuickHw_${s.id}" style="display:none;">
         <input type="text" id="hsQuickHwInput_${s.id}" placeholder="오늘 낸 과제를 입력하세요">
+        <input type="date" id="hsQuickHwDate_${s.id}" style="max-width:150px;">
         <button class="btn btn-primary btn-sm" onclick="saveQuickHomework('${s.id}')">저장</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">취소</button>
       </div>
@@ -1142,39 +1143,84 @@ async function toggleQuickHomework(studentId){
   if(isOpen){ box.style.display = 'none'; return; }
   box.style.display = 'flex';
   const input = document.getElementById('hsQuickHwInput_'+studentId);
+  const dateInput = document.getElementById('hsQuickHwDate_'+studentId);
   input.value = '불러오는 중...';
   input.disabled = true;
-  const { data } = await sb.from('class_logs').select('today_homework')
+
+  const { data } = await sb.from('class_logs').select('today_homework, homework_assignment_id')
     .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
+
   input.disabled = false;
   input.value = (data && data.today_homework) || '';
+
+  // 이미 연결된 정식 숙제가 있으면 그 마감일을 불러오고, 없으면 기본값(3일 뒤)
+  let dueDate = null;
+  if(data && data.homework_assignment_id){
+    const { data: hw } = await sb.from('assignments').select('due_date').eq('id', data.homework_assignment_id).maybeSingle();
+    dueDate = hw ? hw.due_date : null;
+  }
+  if(!dueDate){
+    const d = new Date(); d.setDate(d.getDate()+3);
+    dueDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  dateInput.value = dueDate;
+
   input.focus();
   input.select();
   input.onkeydown = (e)=>{ if(e.key==='Enter') saveQuickHomework(studentId); };
 }
 
-// 오늘 과제만 빠르게 입력/수정 → 수업일지의 '오늘 과제' 칸에 저장 (기존 수업내용/특이사항은 유지)
+// 오늘 과제를 빠르게 입력/수정 → 실제 숙제(assignments)로 등록하고, 수업일지의 '오늘 과제' 칸에도 같이 남김
 async function saveQuickHomework(studentId){
   const s = findStudent(studentId); if(!s) return;
   const input = document.getElementById('hsQuickHwInput_'+studentId);
+  const dateInput = document.getElementById('hsQuickHwDate_'+studentId);
   const text = input.value.trim();
+  const dueDate = dateInput.value || null;
 
-  const { data: existing } = await sb.from('class_logs').select('*')
+  const { data: existingLog } = await sb.from('class_logs').select('*')
     .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
 
-  const { error } = await sb.from('class_logs').upsert({
-    student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
-    lesson_content: existing ? existing.lesson_content : '',
-    today_homework: text,
-    prev_homework_rate: computePrevHomeworkRate(studentId),
-    special_notes: existing ? existing.special_notes : ''
-  }, { onConflict: 'student_id,note_date' });
-  if(error){ alert('저장 실패: '+error.message); return; }
+  let assignmentId = existingLog ? existingLog.homework_assignment_id : null;
 
+  if(!text){
+    // 내용을 비우고 저장 = 숙제 자체를 취소
+    if(assignmentId){
+      await sb.from('assignments').delete().eq('id', assignmentId);
+      assignments = assignments.filter(a=>a.id !== assignmentId);
+      assignmentId = null;
+    }
+  } else if(assignmentId){
+    // 기존 숙제 수정
+    const { error } = await sb.from('assignments').update({ title: text, due_date: dueDate }).eq('id', assignmentId);
+    if(error){ alert('숙제 수정 실패: '+error.message); return; }
+    const a = assignments.find(x=>x.id===assignmentId);
+    if(a){ a.title = text; a.due_date = dueDate; }
+  } else {
+    // 새 숙제 생성 (이 학생 개별 대상)
+    const { data: inserted, error } = await sb.from('assignments')
+      .insert({ title: text, due_date: dueDate, student_id: studentId, class_time: null, description: '' })
+      .select().single();
+    if(error){ alert('숙제 등록 실패: '+error.message); return; }
+    assignmentId = inserted.id;
+    assignments.unshift(inserted);
+  }
+
+  const { error: logErr } = await sb.from('class_logs').upsert({
+    student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
+    lesson_content: existingLog ? existingLog.lesson_content : '',
+    today_homework: text,
+    homework_assignment_id: assignmentId,
+    prev_homework_rate: computePrevHomeworkRate(studentId),
+    special_notes: existingLog ? existingLog.special_notes : ''
+  }, { onConflict: 'student_id,note_date' });
+  if(logErr){ alert('저장 실패: '+logErr.message); return; }
+
+  renderKpiBar();
   toggleQuickHomework(studentId);
   document.getElementById('hsPreview_'+studentId).innerHTML = `
-    <span class="hs-log-item"><strong>오늘 수업</strong> ${existing && existing.lesson_content ? escapeHtml(existing.lesson_content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
-    <span class="hs-log-item"><strong>오늘 과제</strong> ${text ? escapeHtml(text) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
+    <span class="hs-log-item"><strong>오늘 수업</strong> ${existingLog && existingLog.lesson_content ? escapeHtml(existingLog.lesson_content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
+    <span class="hs-log-item"><strong>오늘 과제</strong> ${text ? escapeHtml(text) + (dueDate ? ` (마감 ${fmtDate(dueDate)})` : '') : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
 }
 
 // 홈 화면에서 출결을 바로 체크 (다시 누르면 취소)
