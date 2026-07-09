@@ -228,6 +228,11 @@
   .hs-quick-log textarea{width:100%;}
   .fb-row{display:flex;gap:6px;align-items:center;min-width:200px;}
   .fb-row input{flex:1;font-size:12.5px;padding:6px 8px;transition:border-color .2s;}
+  .status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+  .status-badge.st-active{background:var(--accent-soft);color:var(--accent);}
+  .status-badge.st-out{background:var(--warn-soft);color:var(--warn);}
+  .status-badge.st-hold{background:#e3e1da;color:var(--ink-soft);}
+  .status-badge.st-pending{background:#fdf0d5;color:#9a6a15;}
   .cl-prev-rate{background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink-soft);}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
@@ -349,6 +354,15 @@
             <option value="토일 16:20">토일 16:20</option>
           </select>
         </div>
+        <div><label>재원 상태</label>
+          <select id="stuEnrollStatus">
+            <option value="재원" selected>재원</option>
+            <option value="상담">상담</option>
+            <option value="대기">대기</option>
+            <option value="보류">보류</option>
+            <option value="퇴원">퇴원</option>
+          </select>
+        </div>
       </div>
       <button class="btn btn-primary" id="addStudentBtn">학생 등록하기</button>
       <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;margin-left:8px;">수정 취소</button>
@@ -356,7 +370,17 @@
     <div class="panel">
       <div class="toolbar">
         <h2 style="margin:0;">전체 학생 목록 (<span id="studentCount">0</span>명)</h2>
-        <input type="text" id="studentSearch" placeholder="이름으로 검색" style="max-width:220px;">
+        <div style="display:flex;gap:8px;">
+          <select id="studentStatusFilter" style="max-width:120px;">
+            <option value="">전체 상태</option>
+            <option value="재원">재원</option>
+            <option value="상담">상담</option>
+            <option value="대기">대기</option>
+            <option value="보류">보류</option>
+            <option value="퇴원">퇴원</option>
+          </select>
+          <input type="text" id="studentSearch" placeholder="이름으로 검색" style="max-width:220px;">
+        </div>
       </div>
       <div id="studentTableWrap"></div>
     </div>
@@ -693,17 +717,18 @@ document.getElementById('addStudentBtn').addEventListener('click', async ()=>{
   const phone = document.getElementById('stuPhone').value.trim();
   const guardianPhone = document.getElementById('stuGuardianPhone').value.trim();
   const classTime = document.getElementById('stuClassTime').value;
+  const enrollStatus = document.getElementById('stuEnrollStatus').value;
   if(!name){ alert('학생 이름을 입력해 주세요.'); return; }
 
   if(editingStudentId){
-    const { error } = await sb.from('students').update({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null }).eq('id', editingStudentId);
+    const { error } = await sb.from('students').update({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null, enrollment_status: enrollStatus }).eq('id', editingStudentId);
     if(error){ alert('수정 실패: '+error.message); return; }
     exitEditMode();
   } else {
-    const { error } = await sb.from('students').insert({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null });
+    const { error } = await sb.from('students').insert({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null, enrollment_status: enrollStatus });
     if(error){ alert('등록 실패: '+error.message); return; }
   }
-  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value='';
+  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuEnrollStatus').value='재원';
   await loadStudents(); renderStudentTable(); renderStudentFilters();
 });
 
@@ -718,6 +743,7 @@ function editStudent(id){
   document.getElementById('stuPhone').value = s.phone || '';
   document.getElementById('stuGuardianPhone').value = s.guardian_phone || '';
   document.getElementById('stuClassTime').value = s.class_time || '';
+  document.getElementById('stuEnrollStatus').value = s.enrollment_status || '재원';
   document.getElementById('addStudentBtn').textContent = '수정 완료';
   document.getElementById('cancelEditBtn').style.display = 'inline-block';
   document.getElementById('stuName').scrollIntoView({behavior:'smooth', block:'center'});
@@ -725,38 +751,52 @@ function editStudent(id){
 
 function exitEditMode(){
   editingStudentId = null;
-  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuGrade').value='중1';
+  document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuGrade').value='중1'; document.getElementById('stuEnrollStatus').value='재원';
   document.getElementById('addStudentBtn').textContent = '학생 등록하기';
   document.getElementById('cancelEditBtn').style.display = 'none';
 }
 
 document.getElementById('studentSearch').addEventListener('input', renderStudentTable);
+document.getElementById('studentStatusFilter').addEventListener('change', renderStudentTable);
 
 function classSortIndex(classTime){
   const idx = CLASS_LIST.indexOf(classTime);
   return idx === -1 ? 999 : idx; // 반 미배정은 맨 뒤로
 }
 
+function statusBadgeClass(status){
+  if(status==='재원') return 'st-active';
+  if(status==='퇴원') return 'st-out';
+  if(status==='보류') return 'st-hold';
+  return 'st-pending'; // 상담, 대기
+}
+
 function renderStudentTable(){
   const keyword = document.getElementById('studentSearch').value.trim();
-  const list = students.filter(s=>s.name.includes(keyword)).slice().sort((a,b)=>{
-    const diff = classSortIndex(a.class_time) - classSortIndex(b.class_time);
-    if(diff !== 0) return diff;
-    return (a.name||'').localeCompare(b.name||'', 'ko');
-  });
+  const statusFilter = document.getElementById('studentStatusFilter').value;
+  const list = students
+    .filter(s=>s.name.includes(keyword))
+    .filter(s=> !statusFilter || (s.enrollment_status || '재원') === statusFilter)
+    .slice().sort((a,b)=>{
+      const diff = classSortIndex(a.class_time) - classSortIndex(b.class_time);
+      if(diff !== 0) return diff;
+      return (a.name||'').localeCompare(b.name||'', 'ko');
+    });
   document.getElementById('studentCount').textContent = students.length;
   const wrap = document.getElementById('studentTableWrap');
   if(students.length===0){ wrap.innerHTML = `<div class="empty">등록된 학생이 없습니다. 위 양식으로 첫 학생을 등록해 보세요.</div>`; return; }
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">"${escapeHtml(keyword)}"에 해당하는 학생이 없습니다.</div>`; return; }
-  let html = `<table><thead><tr><th>이름</th><th>학년</th><th>반</th><th>학교</th><th>연락처</th><th>보호자 연락처</th><th>출석률</th><th>평균 점수</th><th></th></tr></thead><tbody>`;
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">조건에 해당하는 학생이 없습니다.</div>`; return; }
+  let html = `<table><thead><tr><th>이름</th><th>상태</th><th>학년</th><th>반</th><th>학교</th><th>연락처</th><th>보호자 연락처</th><th>출석률</th><th>평균 점수</th><th></th></tr></thead><tbody>`;
   list.forEach(s=>{
     const attList = attendance.filter(a=>a.studentId===s.id);
     const presentCount = attList.filter(a=>a.status==='출석').length;
     const rate = attList.length ? Math.round(presentCount/attList.length*100) : null;
     const scoreList = scores.filter(sc=>sc.studentId===s.id);
     const avg = scoreList.length ? Math.round(scoreList.reduce((a,b)=>a+Number(b.score),0)/scoreList.length) : null;
+    const status = s.enrollment_status || '재원';
     html += `<tr>
       <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td><span class="status-badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span></td>
       <td>${escapeHtml(s.grade)}</td>
       <td>${escapeHtml(s.class_time)||'-'}</td>
       <td>${escapeHtml(s.school)||'-'}</td>
@@ -792,7 +832,7 @@ function openStudentDetail(id){
 
   document.getElementById('detailStuName').textContent = s.name;
   document.getElementById('detailStuMeta').textContent =
-    `${s.grade || ''} · ${s.school || '학교 미입력'} · ${s.class_time || '반 미배정'}${s.guardian_phone ? ' · 보호자 '+s.guardian_phone : ''}`;
+    `${s.enrollment_status || '재원'} · ${s.grade || ''} · ${s.school || '학교 미입력'} · ${s.class_time || '반 미배정'}${s.guardian_phone ? ' · 보호자 '+s.guardian_phone : ''}`;
 
   const attList = attendance.filter(a=>a.studentId===id).slice().sort((a,b)=>a.date.localeCompare(b.date));
   const scoreList = scores.filter(sc=>sc.studentId===id).slice().sort((a,b)=>a.date.localeCompare(b.date));
@@ -953,7 +993,7 @@ function renderStudentFilters(){
   const prevAtt = attSel.value, prevScore = scoreSel.value;
   attSel.innerHTML = '<option value="">전체 학생</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
   scoreSel.innerHTML = '<option value="">전체 학생</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
-  if(hwSel) hwSel.innerHTML = '<option value="">선택 안 함</option>' + students.map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  if(hwSel) hwSel.innerHTML = '<option value="">선택 안 함</option>' + students.filter(isActiveStudent).map(s=>`<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
   attSel.value = prevAtt; scoreSel.value = prevScore;
 }
 document.getElementById('attFilterStudent').addEventListener('change', renderAttTable);
@@ -971,13 +1011,15 @@ function renderHomeTab(){
   if(homeSelectedClass !== null) renderHomeStudentList();
 }
 
+function isActiveStudent(s){ return (s.enrollment_status || '재원') === '재원'; }
+
 function renderHomeClassButtons(){
   const wrap = document.getElementById('homeClassButtons');
   const todayGroup = todayClassGroup();
   const groups = {'월목':[], '화금':[], '토일':[]};
   CLASS_LIST.forEach(ct=>{
     const prefix = ct.split(' ')[0];
-    const count = students.filter(s=>s.class_time===ct).length;
+    const count = students.filter(s=>s.class_time===ct && isActiveStudent(s)).length;
     groups[prefix].push({ct, count});
   });
 
@@ -1001,7 +1043,7 @@ function renderHomeClassButtons(){
     Object.keys(groups).forEach(prefix=>{
       html += `<div class="home-group-label">${prefix}요일반${prefix===todayGroup ? ' · 오늘' : ''}</div><div class="home-class-grid">${renderGroupButtons(groups[prefix])}</div>`;
     });
-    const unassigned = students.filter(s=>!s.class_time);
+    const unassigned = students.filter(s=>!s.class_time && isActiveStudent(s));
     if(unassigned.length){
       html += `<div class="home-group-label">반 미배정</div><div class="home-class-grid">
         <button class="home-class-btn${homeSelectedClass===''?' selected':''}" onclick="selectHomeClass('')">
@@ -1040,7 +1082,7 @@ async function loadTodayLogsFor(studentIds){
 
 async function renderHomeStudentList(){
   const classTime = homeSelectedClass;
-  const list = classTime ? students.filter(s=>s.class_time===classTime) : students.filter(s=>!s.class_time);
+  const list = classTime ? students.filter(s=>s.class_time===classTime && isActiveStudent(s)) : students.filter(s=>!s.class_time && isActiveStudent(s));
   const panel = document.getElementById('homeClassStudentsPanel');
   const wrap = document.getElementById('homeClassStudents');
   panel.style.display = 'block';
@@ -1503,7 +1545,7 @@ async function renderKpiBar(){
 
   // 카드1: 오늘 출석 체크 필요
   const group = todayClassGroup();
-  const scheduledToday = group ? students.filter(s=>s.class_time && s.class_time.startsWith(group)) : [];
+  const scheduledToday = group ? students.filter(s=>s.class_time && s.class_time.startsWith(group) && isActiveStudent(s)) : [];
   const uncheckedToday = scheduledToday.filter(s=>!attendance.some(a=>a.studentId===s.id && a.date===todayStr()));
 
   // 카드2: 오늘 수업일지 작성 현황 (오늘 수업 대상 학생 중 몇 명 작성됐는지)
@@ -1580,8 +1622,8 @@ document.getElementById('addHwBtn').addEventListener('click', async ()=>{
 });
 
 function hwTargetStudents(hw){
-  if(hw.student_id) return students.filter(s=>s.id===hw.student_id);
-  if(hw.class_time) return students.filter(s=>s.class_time===hw.class_time);
+  if(hw.student_id) return students.filter(s=>s.id===hw.student_id && isActiveStudent(s));
+  if(hw.class_time) return students.filter(s=>s.class_time===hw.class_time && isActiveStudent(s));
   return [];
 }
 
