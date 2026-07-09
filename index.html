@@ -129,6 +129,19 @@
   .cal-cell.none{background:#e4e2da;color:var(--ink-soft);}
   .cal-cell.today-marker{box-shadow:0 0 0 2px var(--accent) inset;}
   .cal-dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle;}
+  .home-group-label{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:1px;margin:18px 0 8px;}
+  .home-group-label:first-child{margin-top:4px;}
+  .home-class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+  .home-class-btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px 12px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:6px;transition:border-color .12s,transform .12s;}
+  .home-class-btn:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .home-class-btn.selected{border-color:var(--accent);background:var(--accent-soft);}
+  .home-class-btn .hc-time{font-weight:700;font-size:14.5px;}
+  .home-class-btn .hc-count{font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
+  .home-student-list{display:flex;flex-direction:column;gap:8px;}
+  .home-student-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+  .home-student-row .hs-name{font-weight:700;min-width:70px;}
+  .home-student-row .hs-meta{color:var(--ink-soft);font-size:12.5px;flex:1;}
+  .home-student-row .hs-actions{display:flex;gap:6px;}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
   #loginBox{background:var(--panel);padding:40px;border-radius:16px;width:100%;max-width:360px;}
@@ -175,7 +188,8 @@
 <div id="staffView" class="staff-layout" style="display:none;">
 <nav class="sidebar">
   <div class="sidebar-title">MENU</div>
-  <button class="tab-btn active" data-tab="students"><span class="num">01</span>학생 명단</button>
+  <button class="tab-btn active" data-tab="home"><span class="num">00</span>홈</button>
+  <button class="tab-btn" data-tab="students"><span class="num">01</span>학생 명단</button>
   <button class="tab-btn" data-tab="attendance"><span class="num">02</span>출결 관리</button>
   <button class="tab-btn" data-tab="scores"><span class="num">03</span>성적 관리</button>
   <button class="tab-btn" data-tab="homework"><span class="num">04</span>숙제 관리</button>
@@ -186,7 +200,18 @@
 <div class="kpi-wrap"><div class="kpi-bar" id="kpiBar"></div></div>
 
 <main>
-  <section id="tab-students" class="tab-panel">
+  <section id="tab-home" class="tab-panel">
+    <div class="panel">
+      <h2 style="margin:0 0 6px;">반별로 찾기</h2>
+      <p class="desc">반을 먼저 고르면, 그 반 학생만 모아서 보여드려요. 거기서 바로 숙제를 내거나 상담 일지를 쓸 수 있습니다.</p>
+      <div id="homeClassButtons"></div>
+    </div>
+    <div class="panel" id="homeClassStudentsPanel" style="display:none;">
+      <div id="homeClassStudents"></div>
+    </div>
+  </section>
+
+  <section id="tab-students" class="tab-panel" style="display:none;">
     <div class="panel">
       <h2>학생 등록</h2>
       <p class="desc">이름, 학년, 학교를 입력하여 새 학생을 등록하세요.</p>
@@ -424,6 +449,11 @@ let currentStudentId = null;
 let assignments = [];
 let submissions = [];
 let counselingNotes = [];
+const CLASS_LIST = [
+  '월목 15:20','월목 17:00','월목 18:40','월목 20:20',
+  '화금 15:20','화금 17:00','화금 18:40','화금 20:20',
+  '토일 09:20','토일 11:00','토일 13:00','토일 14:40','토일 16:20'
+];
 const HW_BUCKET = 'homework-submissions';
 
 // 마감일 기준 D-day 정보 계산 (오늘/내일/모레는 임박으로 강조)
@@ -507,7 +537,7 @@ async function enterApp(session){
 async function refreshAll(){
   await Promise.all([loadStudents(), loadAttendance(), loadScores()]);
   renderStudentTable(); renderStudentFilters(); renderAttendanceTab(); renderScoreTab();
-  renderKpiBar();
+  renderKpiBar(); renderHomeTab();
 }
 async function loadStudents(){
   const { data, error } = await sb.from('students').select('*').order('created_at', {ascending:true});
@@ -535,6 +565,7 @@ document.querySelectorAll('#staffView .tab-btn').forEach(btn=>{
     if(btn.dataset.tab==='scores') renderScoreTab();
     if(btn.dataset.tab==='homework') renderHwList();
     if(btn.dataset.tab==='counseling') renderCounselingTab();
+    if(btn.dataset.tab==='home') renderHomeTab();
   });
 });
 
@@ -809,6 +840,88 @@ function renderStudentFilters(){
   attSel.value = prevAtt; scoreSel.value = prevScore;
 }
 document.getElementById('attFilterStudent').addEventListener('change', renderAttTable);
+
+/* =========================================================
+   홈 — 반별로 학생 찾기
+========================================================= */
+let homeSelectedClass = null;
+
+function renderHomeTab(){
+  renderHomeClassButtons();
+  if(homeSelectedClass !== null) renderHomeStudentList();
+}
+
+function renderHomeClassButtons(){
+  const wrap = document.getElementById('homeClassButtons');
+  const groups = {'월목':[], '화금':[], '토일':[]};
+  CLASS_LIST.forEach(ct=>{
+    const prefix = ct.split(' ')[0];
+    const count = students.filter(s=>s.class_time===ct).length;
+    groups[prefix].push({ct, count});
+  });
+  let html = '';
+  Object.keys(groups).forEach(prefix=>{
+    html += `<div class="home-group-label">${prefix}요일반</div><div class="home-class-grid">`;
+    groups[prefix].forEach(g=>{
+      html += `<button class="home-class-btn${homeSelectedClass===g.ct?' selected':''}" onclick="selectHomeClass('${g.ct}')">
+        <span class="hc-time">${g.ct.split(' ')[1]}</span>
+        <span class="hc-count">${g.count}명</span>
+      </button>`;
+    });
+    html += `</div>`;
+  });
+  const unassigned = students.filter(s=>!s.class_time);
+  if(unassigned.length){
+    html += `<div class="home-group-label">반 미배정</div><div class="home-class-grid">
+      <button class="home-class-btn${homeSelectedClass===''?' selected':''}" onclick="selectHomeClass('')">
+        <span class="hc-time">미배정</span><span class="hc-count">${unassigned.length}명</span>
+      </button>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function selectHomeClass(classTime){
+  homeSelectedClass = classTime;
+  renderHomeClassButtons();
+  renderHomeStudentList();
+}
+
+function renderHomeStudentList(){
+  const classTime = homeSelectedClass;
+  const list = classTime ? students.filter(s=>s.class_time===classTime) : students.filter(s=>!s.class_time);
+  const panel = document.getElementById('homeClassStudentsPanel');
+  const wrap = document.getElementById('homeClassStudents');
+  panel.style.display = 'block';
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">이 반에 등록된 학생이 없습니다.</div>`; return; }
+  let html = `<h2 style="margin:0 0 16px;">${classTime || '반 미배정'} <span style="color:var(--ink-soft);font-weight:400;font-size:14px;">(${list.length}명)</span></h2><div class="home-student-list">`;
+  list.forEach(s=>{
+    html += `<div class="home-student-row">
+      <span class="hs-name">${escapeHtml(s.name)}</span>
+      <span class="hs-meta">${escapeHtml(s.grade)||''} · ${escapeHtml(s.school)||'학교 미입력'}</span>
+      <span class="hs-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openStudentDetail('${s.id}')">상세보기</button>
+        <button class="btn btn-ghost btn-sm" onclick="goToHomeworkFor('${s.id}')">숙제 내주기</button>
+        <button class="btn btn-ghost btn-sm" onclick="goToCounselingFor('${s.id}')">상담 일지</button>
+      </span>
+    </div>`;
+  });
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+function goToHomeworkFor(studentId){
+  document.querySelector('.tab-btn[data-tab="homework"]').click();
+  document.getElementById('hwClassTime').value = '';
+  document.getElementById('hwStudent').value = studentId;
+  document.getElementById('hwTitle').focus();
+}
+
+function goToCounselingFor(studentId){
+  document.querySelector('.tab-btn[data-tab="counseling"]').click();
+  document.getElementById('cnStudent').value = studentId;
+  document.getElementById('cnTitle').focus();
+}
 
 function renderAttStats(){
   const total = attendance.length;
