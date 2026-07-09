@@ -145,6 +145,7 @@
   .home-student-row .hs-name{font-weight:700;min-width:70px;}
   .home-student-row .hs-meta{color:var(--ink-soft);font-size:12.5px;flex:1;}
   .home-student-row .hs-actions{display:flex;gap:6px;}
+  .cl-prev-rate{background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink-soft);}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
   #loginBox{background:var(--panel);padding:40px;border-radius:16px;width:100%;max-width:360px;}
@@ -211,6 +212,22 @@
     </div>
     <div class="panel" id="homeClassStudentsPanel" style="display:none;">
       <div id="homeClassStudents"></div>
+    </div>
+    <div class="panel" id="homeClassLogPanel" style="display:none;">
+      <h2 style="margin:0 0 4px;" id="clStudentTitle">오늘의 수업일지</h2>
+      <p class="desc">저장하면 노션 '수업일지' 데이터베이스에도 자동으로 기록됩니다.</p>
+      <div class="grid-form">
+        <div><label>학생</label><input type="text" id="clStudentLabel" readonly></div>
+        <div><label>날짜</label><input type="date" id="clDate"></div>
+      </div>
+      <div class="grid-form">
+        <div style="grid-column:1/-1;"><label>수업 내용</label><textarea id="clLessonContent" rows="3" placeholder="오늘 진도, 다룬 내용을 적어주세요."></textarea></div>
+        <div style="grid-column:1/-1;"><label>오늘 과제</label><input type="text" id="clTodayHomework" placeholder="예: 3단원 유형별 문제풀이 20~25쪽"></div>
+        <div style="grid-column:1/-1;"><label>지난 과제 이행률</label><div id="clPrevRate" class="cl-prev-rate">-</div></div>
+        <div style="grid-column:1/-1;"><label>특이사항</label><textarea id="clSpecialNotes" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등"></textarea></div>
+      </div>
+      <button class="btn btn-primary" id="addClBtn">수업일지 저장</button>
+      <span id="clSyncStatus" style="margin-left:10px;font-size:12.5px;color:var(--ink-soft);"></span>
     </div>
   </section>
 
@@ -910,6 +927,7 @@ function selectHomeClass(classTime){
   homeSelectedClass = classTime;
   renderHomeClassButtons();
   renderHomeStudentList();
+  document.getElementById('homeClassLogPanel').style.display = 'none';
 }
 
 function renderHomeStudentList(){
@@ -928,6 +946,7 @@ function renderHomeStudentList(){
         <button class="btn btn-ghost btn-sm" onclick="openStudentDetail('${s.id}')">상세보기</button>
         <button class="btn btn-ghost btn-sm" onclick="goToHomeworkFor('${s.id}')">숙제 내주기</button>
         <button class="btn btn-ghost btn-sm" onclick="goToCounselingFor('${s.id}')">상담 일지</button>
+        <button class="btn btn-ghost btn-sm" onclick="openClassLogPanel('${s.id}')">수업일지</button>
       </span>
     </div>`;
   });
@@ -935,8 +954,72 @@ function renderHomeStudentList(){
   wrap.innerHTML = html;
 }
 
+/* =========================================================
+   오늘의 수업일지 (학생 단위, 노션 '수업일지' DB 자동 동기화)
+========================================================= */
+let homeLogStudentId = null;
+
+// 이 학생에게 마감된(지난) 가장 최근 숙제의 제출 여부를 계산해서 문구로 반환
+// 반 전체 숙제 + 개별 지정 숙제를 모두 포함해서 확인
+function computePrevHomeworkRate(studentId){
+  const s = findStudent(studentId);
+  if(!s) return '-';
+  const past = assignments
+    .filter(hw => hw.due_date && hw.due_date < todayStr() &&
+      (hw.student_id === studentId || (!hw.student_id && hw.class_time === s.class_time)))
+    .sort((a,b)=> b.due_date.localeCompare(a.due_date));
+  if(past.length === 0) return '최근 숙제 기록이 없습니다.';
+  const hw = past[0];
+  const sub = submissions.find(x=>x.assignment_id===hw.id && x.student_id===studentId);
+  const done = sub && sub.submitted_at;
+  return `'${hw.title}' (마감 ${fmtDate(hw.due_date)}) — ${done ? '제출완료' : '미제출'}`;
+}
+
+async function openClassLogPanel(studentId){
+  const s = findStudent(studentId); if(!s) return;
+  homeLogStudentId = studentId;
+  document.getElementById('homeClassLogPanel').style.display = 'block';
+  document.getElementById('clStudentTitle').textContent = `${s.name} 학생 · 오늘의 수업일지`;
+  document.getElementById('clStudentLabel').value = `${s.name} (${s.class_time || '반 미배정'})`;
+  document.getElementById('clDate').value = todayStr();
+  document.getElementById('clPrevRate').textContent = computePrevHomeworkRate(studentId);
+  document.getElementById('clLessonContent').value = '';
+  document.getElementById('clTodayHomework').value = '';
+  document.getElementById('clSpecialNotes').value = '';
+  document.getElementById('clSyncStatus').textContent = '';
+  document.getElementById('homeClassLogPanel').scrollIntoView({behavior:'smooth', block:'center'});
+
+  // 오늘 날짜로 이미 작성된 일지가 있으면 불러와서 채워줌
+  const { data, error } = await sb.from('class_logs').select('*')
+    .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
+  if(!error && data){
+    document.getElementById('clLessonContent').value = data.lesson_content || '';
+    document.getElementById('clTodayHomework').value = data.today_homework || '';
+    document.getElementById('clSpecialNotes').value = data.special_notes || '';
+    document.getElementById('clSyncStatus').textContent = data.notion_page_id ? '노션 동기화 완료' : '노션 동기화 대기중';
+  }
+}
+
+document.getElementById('addClBtn').addEventListener('click', async ()=>{
+  if(!homeLogStudentId){ return; }
+  const s = findStudent(homeLogStudentId); if(!s) return;
+  const date = document.getElementById('clDate').value || todayStr();
+  const lessonContent = document.getElementById('clLessonContent').value.trim();
+  const todayHomework = document.getElementById('clTodayHomework').value.trim();
+  const specialNotes = document.getElementById('clSpecialNotes').value.trim();
+  const prevRate = computePrevHomeworkRate(homeLogStudentId);
+
+  const { error } = await sb.from('class_logs').upsert({
+    student_id: homeLogStudentId, class_time: s.class_time || null, note_date: date,
+    lesson_content: lessonContent, today_homework: todayHomework,
+    prev_homework_rate: prevRate, special_notes: specialNotes
+  }, { onConflict: 'student_id,note_date' });
+  if(error){ alert('저장 실패: '+error.message); return; }
+  document.getElementById('clSyncStatus').textContent = '저장됨 · 잠시 후 노션에도 반영됩니다.';
+  alert('수업일지가 저장됐습니다.');
+});
+
 function goToHomeworkFor(studentId){
-  document.querySelector('.tab-btn[data-tab="homework"]').click();
   document.getElementById('hwClassTime').value = '';
   document.getElementById('hwStudent').value = studentId;
   document.getElementById('hwTitle').focus();
