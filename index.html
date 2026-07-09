@@ -50,6 +50,26 @@
     .sidebar button.tab-btn{border-left:none;border-bottom:3px solid transparent;padding:10px 16px;}
     .sidebar button.tab-btn.active{border-bottom-color:var(--accent);}
   }
+  /* 표가 있는 영역은 내용이 좁아지지 않고 가로 스크롤되도록 처리 */
+  [id$="Wrap"]{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:640px;}
+  @media (max-width:600px){
+    header{padding:14px 16px;gap:6px;}
+    header h1{font-size:16px;}
+    header .today{display:none;}
+    header .who{font-size:11px;}
+    .kpi-wrap{padding:14px 16px 0;}
+    main{padding:16px 16px 40px;}
+    .panel{padding:16px;}
+    .grid-form{grid-template-columns:1fr;}
+    .kpi-card .kpi-value{font-size:21px;}
+    #detailModalBox{padding:18px;max-width:100%;}
+    #detailModalOverlay{padding:12px;}
+    .home-class-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));}
+    .hs-actions{width:100%;}
+    .hs-actions button{flex:1;}
+    #loginBox{padding:24px;}
+  }
   main{padding:28px 32px 60px;max-width:1180px;margin:0 auto;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;margin-bottom:22px;}
   .panel h2{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px;}
