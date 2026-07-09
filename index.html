@@ -103,6 +103,7 @@
     .hs-actions{width:100%;}
     .hs-actions button{flex:1;}
     #loginBox{padding:24px;}
+    .stat-row{grid-template-columns:1fr 1fr;}
   }
   main{padding:28px 32px 60px;max-width:1180px;margin:0 auto;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;margin-bottom:22px;}
@@ -145,6 +146,10 @@
   .stat-card{background:#fcfcfb;border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
   .stat-card .label{font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
   .stat-card .value{font-family:var(--mono);font-size:22px;font-weight:700;}
+
+  input[type="file"]{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--sans);font-size:12.5px;color:var(--ink-soft);background:#fcfcfb;width:100%;}
+  input[type="file"]::file-selector-button{border:none;background:var(--accent);color:#fff;padding:7px 14px;border-radius:6px;font-weight:700;font-size:12.5px;margin-right:10px;cursor:pointer;font-family:var(--sans);}
+  input[type="file"]::-webkit-file-upload-button{border:none;background:var(--accent);color:#fff;padding:7px 14px;border-radius:6px;font-weight:700;font-size:12.5px;margin-right:10px;cursor:pointer;font-family:var(--sans);}
   .dday{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700;font-family:var(--mono);}
   .dday-normal{background:var(--accent-soft);color:var(--accent);}
   .dday-soon{background:var(--late-soft);color:var(--late);}
