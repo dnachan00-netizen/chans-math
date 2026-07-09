@@ -364,7 +364,7 @@
           <button class="btn btn-ghost btn-sm" onclick="shiftDetailCalMonth(1)">›</button>
         </div>
       </div>
-      <div id="detailCalGrid"></div>
+      <div id="detailCalGrid" class="cal-grid"></div>
       <div style="display:flex;gap:14px;margin-top:12px;font-size:11.5px;color:var(--ink-soft);">
         <span><span class="cal-dot" style="background:#2f5d50;"></span> 출석</span>
         <span><span class="cal-dot" style="background:#b8862f;"></span> 지각</span>
@@ -573,7 +573,7 @@ function renderStudentTable(){
   const wrap = document.getElementById('studentTableWrap');
   if(students.length===0){ wrap.innerHTML = `<div class="empty">등록된 학생이 없습니다. 위 양식으로 첫 학생을 등록해 보세요.</div>`; return; }
   if(list.length===0){ wrap.innerHTML = `<div class="empty">"${escapeHtml(keyword)}"에 해당하는 학생이 없습니다.</div>`; return; }
-  let html = `<table><thead><tr><th>이름</th><th>학년</th><th>반</th><th>학교</th><th>연락처</th><th>출석률</th><th>평균 점수</th><th></th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>이름</th><th>학년</th><th>반</th><th>학교</th><th>연락처</th><th>보호자 연락처</th><th>출석률</th><th>평균 점수</th><th></th></tr></thead><tbody>`;
   list.forEach(s=>{
     const attList = attendance.filter(a=>a.studentId===s.id);
     const presentCount = attList.filter(a=>a.status==='출석').length;
@@ -586,6 +586,7 @@ function renderStudentTable(){
       <td>${escapeHtml(s.class_time)||'-'}</td>
       <td>${escapeHtml(s.school)||'-'}</td>
       <td>${escapeHtml(s.phone)||'-'}</td>
+      <td>${escapeHtml(s.guardian_phone)||'-'}</td>
       <td>${rate===null?'기록 없음':rate+'%'}</td>
       <td>${avg===null?'기록 없음':`<span class="score-num ${avg>=80?'score-high':avg>=60?'score-mid':'score-low'}">${avg}점</span>`}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="openStudentDetail('${s.id}')" style="margin-right:6px;">상세보기</button><button class="btn btn-ghost btn-sm" onclick="editStudent('${s.id}')" style="margin-right:6px;">수정</button><button class="btn btn-warn btn-sm" onclick="deleteStudent('${s.id}')">삭제</button></td>
