@@ -40,6 +40,35 @@
   nav.tabs button .num{font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:6px;}
   nav.tabs button.active{color:var(--ink);background:var(--panel);box-shadow:0 -2px 0 var(--accent) inset;}
 
+  /* 학생 모드: 상단 헤더 간소화 + 하단 탭바(앱 느낌) */
+  body.student-mode header{padding:14px 20px;}
+  body.student-mode header .who,
+  body.student-mode header .today,
+  body.student-mode #alertBell{display:none;}
+  body.student-mode header h1{font-size:16px;}
+  body.student-mode .logo-chip .brand-logo{height:20px;}
+  body.student-mode header .signout{padding:5px 10px;font-size:11.5px;}
+
+  #studentGreeting{background:linear-gradient(135deg, var(--ink) 0%, #2d3766 100%);color:#fff;padding:22px 20px 20px;margin:0 0 18px;}
+  #studentGreeting .sg-name{font-size:19px;font-weight:800;margin-bottom:5px;}
+  #studentGreeting .sg-sub{font-size:12.5px;color:#b9bfe0;font-family:var(--mono);}
+
+  #studentView main{max-width:640px;margin:0 auto;padding:0 16px calc(88px + env(safe-area-inset-bottom));}
+  #studentView nav.tabs{
+    position:fixed;bottom:0;left:0;right:0;
+    display:flex;gap:4px;background:var(--panel);
+    border-top:1px solid var(--line);border-bottom:none;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+    box-shadow:0 -6px 20px rgba(27,35,64,0.08);
+    z-index:200;max-width:640px;margin:0 auto;
+  }
+  #studentView nav.tabs button{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    padding:8px 4px;border-radius:14px;font-size:11.5px;font-weight:700;color:var(--ink-soft);
+  }
+  #studentView nav.tabs button .tab-icon{font-size:21px;line-height:1;}
+  #studentView nav.tabs button.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
+
   .staff-layout{display:flex;align-items:stretch;}
   .sidebar{width:220px;flex-shrink:0;background:var(--ink);min-height:calc(100vh - 68px);padding:22px 0;display:flex;flex-direction:column;gap:2px;}
   .sidebar-title{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:#6b7397;padding:0 24px 14px;}
@@ -422,10 +451,7 @@
 
 <!-- ================= 학생 전용 화면 ================= -->
 <div id="studentView" style="display:none;">
-  <nav class="tabs">
-    <button class="tab-btn active" data-stab="myhw"><span class="num">01</span>숙제</button>
-    <button class="tab-btn" data-stab="myinfo"><span class="num">02</span>내 출결·성적</button>
-  </nav>
+  <div id="studentGreeting"></div>
   <main>
     <section id="stab-myhw" class="tab-panel">
       <div class="panel">
@@ -447,6 +473,10 @@
       </div>
     </section>
   </main>
+  <nav class="tabs">
+    <button class="tab-btn active" data-stab="myhw"><span class="tab-icon">📝</span><span class="tab-label">숙제</span></button>
+    <button class="tab-btn" data-stab="myinfo"><span class="tab-icon">📊</span><span class="tab-label">내 출결·성적</span></button>
+  </nav>
 </div>
 
 <footer>CHANCE MATH · 모든 데이터는 Supabase 클라우드 데이터베이스에 실시간으로 저장됩니다.</footer>
@@ -566,12 +596,16 @@ async function enterApp(session){
   currentStudentId = profile.student_id;
 
   if(currentRole === 'staff'){
+    document.body.classList.remove('student-mode');
     document.getElementById('staffView').style.display = 'flex';
     document.getElementById('studentView').style.display = 'none';
+    document.getElementById('whoLabel').textContent = session.user.email;
     await refreshAll();
     await loadAssignmentsAndSubmissions();
     renderHwList();
   } else {
+    document.body.classList.add('student-mode');
+    document.querySelector('header h1').textContent = '찬스수학';
     document.getElementById('staffView').style.display = 'none';
     document.getElementById('studentView').style.display = 'block';
     await refreshStudentPortal();
@@ -1490,8 +1524,21 @@ async function viewSubmissionFile(path){
 ========================================================= */
 async function refreshStudentPortal(){
   await Promise.all([loadMyStudentRow(), loadMyAssignments(), loadMyAttendance(), loadMyScores()]);
+  renderStudentGreeting();
   renderMyHw();
   renderMyInfo();
+}
+
+function renderStudentGreeting(){
+  const el = document.getElementById('studentGreeting');
+  if(!myStudentRow){ el.innerHTML = ''; return; }
+  const hour = new Date().getHours();
+  const greet = hour < 11 ? '좋은 아침이에요' : hour < 18 ? '오늘도 화이팅' : '오늘 하루도 수고했어요';
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  el.innerHTML = `
+    <div class="sg-name">${escapeHtml(myStudentRow.name)}님, ${greet} 👋</div>
+    <div class="sg-sub">${dateStr} · ${escapeHtml(myStudentRow.class_time)||'반 미배정'}</div>`;
 }
 
 let myStudentRow = null;
@@ -1530,10 +1577,11 @@ function renderMyHw(){
     const sub = submissions.find(s=>s.assignment_id===hw.id);
     const submitted = sub && sub.submitted_at;
     const dd = ddayInfo(hw.due_date);
-    html += `<div style="border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:12px;">
+    const accentColor = submitted ? 'var(--accent)' : (dd && dd.urgent ? 'var(--warn)' : 'var(--line)');
+    html += `<div class="hw-card" style="border:1px solid var(--line);border-left:4px solid ${accentColor};border-radius:12px;padding:16px;margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <strong>${escapeHtml(hw.title)}</strong>
-        <span class="badge ${submitted ? 'badge-present':'badge-late'}">${submitted ? '제출완료' : '미제출'}</span>
+        <span class="badge ${submitted ? 'badge-present':'badge-late'}">${submitted ? '✅ 제출완료' : '미제출'}</span>
       </div>
       <p style="color:var(--ink-soft);font-size:13px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span>${hw.due_date ? '마감 '+fmtDate(hw.due_date) : '마감일 없음'}</span>
