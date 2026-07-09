@@ -221,6 +221,8 @@
   .hs-quick-log{display:flex;flex-direction:column;gap:6px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px;}
   .hs-quick-log label{font-size:11px;color:var(--ink-soft);font-weight:700;margin-top:2px;}
   .hs-quick-log textarea{width:100%;}
+  .fb-row{display:flex;gap:6px;align-items:center;min-width:200px;}
+  .fb-row input{flex:1;font-size:12.5px;padding:6px 8px;transition:border-color .2s;}
   .cl-prev-rate{background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink-soft);}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
@@ -725,9 +727,18 @@ function exitEditMode(){
 
 document.getElementById('studentSearch').addEventListener('input', renderStudentTable);
 
+function classSortIndex(classTime){
+  const idx = CLASS_LIST.indexOf(classTime);
+  return idx === -1 ? 999 : idx; // 반 미배정은 맨 뒤로
+}
+
 function renderStudentTable(){
   const keyword = document.getElementById('studentSearch').value.trim();
-  const list = students.filter(s=>s.name.includes(keyword));
+  const list = students.filter(s=>s.name.includes(keyword)).slice().sort((a,b)=>{
+    const diff = classSortIndex(a.class_time) - classSortIndex(b.class_time);
+    if(diff !== 0) return diff;
+    return (a.name||'').localeCompare(b.name||'', 'ko');
+  });
   document.getElementById('studentCount').textContent = students.length;
   const wrap = document.getElementById('studentTableWrap');
   if(students.length===0){ wrap.innerHTML = `<div class="empty">등록된 학생이 없습니다. 위 양식으로 첫 학생을 등록해 보세요.</div>`; return; }
@@ -1593,7 +1604,7 @@ function renderHwList(){
         </div>
       </div>
       ${hw.description ? `<p style="color:var(--ink-soft);font-size:13.5px;margin:8px 0 12px;">${escapeHtml(hw.description)}</p>` : ''}
-      <table><thead><tr><th>학생</th><th>제출 여부</th><th>제출 내용</th><th>첨부파일</th></tr></thead><tbody>
+      <table><thead><tr><th>학생</th><th>제출 여부</th><th>제출 내용</th><th>첨부파일</th><th>선생님 피드백</th></tr></thead><tbody>
       ${targets.map(s=>{
         const sub = subForThis.find(x=>x.student_id===s.id);
         return `<tr>
@@ -1601,12 +1612,28 @@ function renderHwList(){
           <td>${sub && sub.submitted_at ? `<span class="badge badge-present">제출완료</span>` : `<span class="badge badge-absent">미제출</span>`}</td>
           <td>${sub && sub.content ? escapeHtml(sub.content) : '-'}</td>
           <td>${sub && sub.file_path ? `<button class="btn btn-ghost btn-sm" onclick="viewSubmissionFile('${sub.file_path}')">📎 ${escapeHtml(sub.file_name||'파일보기')}</button>` : '-'}</td>
+          <td>${sub ? `<div class="fb-row">
+              <input type="text" id="fb_${sub.id}" value="${escapeHtml(sub.teacher_feedback)||''}" placeholder="피드백 남기기">
+              <button class="btn btn-ghost btn-sm" onclick="saveFeedback('${sub.id}')">저장</button>
+            </div>` : '<span style="color:var(--ink-soft);">제출 전</span>'}</td>
         </tr>`;
       }).join('')}
       </tbody></table>
     </div>`;
   });
   wrap.innerHTML = html;
+}
+
+// 학생 제출물에 대한 선생님 피드백 저장
+async function saveFeedback(submissionId){
+  const input = document.getElementById('fb_'+submissionId);
+  const text = input.value.trim();
+  const { error } = await sb.from('submissions').update({ teacher_feedback: text }).eq('id', submissionId);
+  if(error){ alert('저장 실패: '+error.message); return; }
+  const sub = submissions.find(x=>x.id===submissionId);
+  if(sub) sub.teacher_feedback = text;
+  input.style.borderColor = 'var(--accent)';
+  setTimeout(()=>{ input.style.borderColor = ''; }, 800);
 }
 
 // 학생이 제출한 첨부파일을 임시 서명 URL로 열람 (비공개 버킷)
