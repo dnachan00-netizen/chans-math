@@ -226,6 +226,12 @@
   .hs-quick-log{display:flex;flex-direction:column;gap:6px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px;}
   .hs-quick-log label{font-size:11px;color:var(--ink-soft);font-weight:700;margin-top:2px;}
   .hs-quick-log textarea{width:100%;}
+  .segmented4{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+  .segmented4 button{border:none;background:#fff;padding:8px 4px;font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;border-right:1px solid var(--line);}
+  .segmented4 button:last-child{border-right:none;}
+  .segmented4 button.active{background:var(--accent);color:#fff;}
+  .cl-report-preview{white-space:pre-wrap;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:12.5px;line-height:1.6;color:var(--ink);}
+  .cl-report-preview:empty{display:none;}
   .fb-row{display:flex;gap:6px;align-items:center;min-width:200px;}
   .fb-row input{flex:1;font-size:12.5px;padding:6px 8px;transition:border-color .2s;}
   .status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:700;white-space:nowrap;}
@@ -1151,10 +1157,46 @@ async function renderHomeStudentList(){
       <div class="hs-quick-log" id="hsQuickLog_${s.id}" style="display:none;">
         <label>수업 내용</label>
         <textarea id="hsLogContent_${s.id}" rows="2" placeholder="오늘 진도, 다룬 내용을 적어주세요.">${log && log.lesson_content ? escapeHtml(log.lesson_content) : ''}</textarea>
-        <label>특이사항</label>
+
+        <label>숙제 수행</label>
+        <div class="segmented4" id="hsLogHwState_${s.id}">
+          <button type="button" data-val="완료" onclick="selectHwState('${s.id}',this)" class="${(!log||!log.homework_status||log.homework_status==='완료')?'active':''}">완료</button>
+          <button type="button" data-val="일부" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='일부'?'active':''}">일부</button>
+          <button type="button" data-val="미완료" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='미완료'?'active':''}">미완료</button>
+          <button type="button" data-val="없음" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='없음'?'active':''}">없음</button>
+        </div>
+
+        <label>이해도</label>
+        <select id="hsLogUnderstanding_${s.id}">
+          <option value="">선택 안 함</option>
+          <option${log&&log.understanding==='개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요'?' selected':''}>개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요</option>
+          <option${log&&log.understanding==='기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요'?' selected':''}>기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요</option>
+          <option${log&&log.understanding==='처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요'?' selected':''}>처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요</option>
+          <option${log&&log.understanding==='전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요'?' selected':''}>전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요</option>
+          <option${log&&log.understanding==='다시 풀거나 설명하려니 조금 헷갈려했어요'?' selected':''}>다시 풀거나 설명하려니 조금 헷갈려했어요</option>
+          <option${log&&log.understanding==='오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요'?' selected':''}>오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요</option>
+        </select>
+
+        <label>태도</label>
+        <select id="hsLogAttitude_${s.id}">
+          <option value="">선택 안 함</option>
+          <option${log&&log.attitude==='어려워했지만 끝까지 포기 안 하고 고민해서 풀어보려는 태도가 기특했어요'?' selected':''}>어려워했지만 끝까지 포기 안 하고 고민해서 풀어보려는 태도가 기특했어요</option>
+          <option${log&&log.attitude==='조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요'?' selected':''}>조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요</option>
+          <option${log&&log.attitude==='아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요'?' selected':''}>아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요</option>
+          <option${log&&log.attitude==='숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요'?' selected':''}>숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요</option>
+          <option${log&&log.attitude==='모르는 것을 부끄러워하지 않고 적극적으로 질문했어요'?' selected':''}>모르는 것을 부끄러워하지 않고 적극적으로 질문했어요</option>
+          <option${log&&log.attitude==='오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요'?' selected':''}>오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요</option>
+        </select>
+
+        <label>다음 시간 계획</label>
+        <input type="text" id="hsLogNextPlan_${s.id}" placeholder="예: 지수함수, 로그함수 복습하고 이어서 진도" value="${log&&log.next_plan?escapeHtml(log.next_plan):''}">
+
+        <label>오늘 메모 (특이사항)</label>
         <textarea id="hsLogNotes_${s.id}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
+
         <div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(s.id)}</div>
-        <button class="btn btn-primary btn-sm" onclick="saveQuickClassLog('${s.id}')">저장</button>
+        <div class="cl-report-preview" id="hsLogPreview_${s.id}"></div>
+        <button class="btn btn-primary btn-sm" onclick="saveQuickClassLog('${s.id}')">저장 + 미리보기</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleClassLogInline('${s.id}')">취소</button>
       </div>
     </div>`;
@@ -1287,7 +1329,48 @@ async function quickSetAttendance(studentId, status){
   }
 }
 
-// 수업일지(수업 내용/특이사항)를 그 자리에서 펼쳐서 바로 입력
+function selectHwState(studentId, btn){
+  const group = document.getElementById('hsLogHwState_'+studentId);
+  group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// 짧은 선택지를 학부모님께 보내기 좋은 자연스러운 문장으로 바꿔주는 사전
+const HW_STATE_SENTENCE = {
+  '완료': s => `${s} 학생이 숙제를 잘 해와서 꼼꼼히 확인하고 넘어갔어요.`,
+  '일부': s => `${s} 학생 숙제는 일부 해왔고, 모르는 문제 위주로 같이 짚어가며 풀었어요.`,
+  '미완료': s => `${s} 학생이 사정이 있어 숙제를 다 하지 못해서, 오늘 할 수 있는 부분부터 같이 확인했어요.`,
+  '없음': s => `${s} 학생 오늘은 따로 숙제가 없어서 지난 시간 내용을 복습하고 진도를 이어갔어요.`
+};
+
+function toSentence(text){
+  const t = (text||'').trim();
+  if(!t) return '';
+  return /[.!?요]$/.test(t) ? t : t + '.';
+}
+
+// 수업 내용/숙제수행/이해도/태도/다음계획/오늘메모를 하나의 자연스러운 문단으로 조합
+function composeClassReport(studentName, { lessonContent, hwState, understanding, attitude, nextPlan, notes }){
+  const today = new Date();
+  const dateLabel = `${today.getMonth()+1}월 ${today.getDate()}일`;
+
+  const todayLines = [];
+  if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 진도 나갔어요'));
+  if(hwState && HW_STATE_SENTENCE[hwState]) todayLines.push(HW_STATE_SENTENCE[hwState](studentName));
+  if(understanding) todayLines.push(toSentence(understanding));
+  if(notes) todayLines.push(toSentence(notes));
+
+  const nextLines = [];
+  if(nextPlan) nextLines.push(toSentence(`다음 시간에는 ${nextPlan}`) .replace(/\.$/, '') + ' 확인하고 이어서 진도 나갈게요.');
+  if(attitude) nextLines.push(toSentence(attitude));
+
+  let out = `📌 ${dateLabel} 수업\n${todayLines.join('\n')}`;
+  if(nextLines.length) out += `\n\n📌 다음 시간\n${nextLines.join('\n')}`;
+  out += `\n\n오늘도 수고 많았어요, 감사합니다!`;
+  return out;
+}
+
+// 수업일지(수업 내용/숙제수행/이해도/태도/다음계획/특이사항)를 그 자리에서 펼쳐서 바로 입력
 function toggleClassLogInline(studentId){
   const box = document.getElementById('hsQuickLog_'+studentId);
   const hwBox = document.getElementById('hsQuickHw_'+studentId);
@@ -1303,20 +1386,31 @@ async function saveQuickClassLog(studentId){
   const s = findStudent(studentId); if(!s) return;
   const content = document.getElementById('hsLogContent_'+studentId).value.trim();
   const notes = document.getElementById('hsLogNotes_'+studentId).value.trim();
+  const hwState = document.querySelector(`#hsLogHwState_${studentId} button.active`)?.dataset.val || '완료';
+  const understanding = document.getElementById('hsLogUnderstanding_'+studentId).value;
+  const attitude = document.getElementById('hsLogAttitude_'+studentId).value;
+  const nextPlan = document.getElementById('hsLogNextPlan_'+studentId).value.trim();
 
   const { data: existing } = await sb.from('class_logs').select('*')
     .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
+
+  const composed = composeClassReport(s.name, { lessonContent: content, hwState, understanding, attitude, nextPlan, notes });
 
   const { error } = await sb.from('class_logs').upsert({
     student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
     lesson_content: content,
     today_homework: existing ? existing.today_homework : '',
     prev_homework_rate: computePrevHomeworkRate(studentId),
-    special_notes: notes
+    special_notes: notes,
+    homework_status: hwState,
+    understanding: understanding,
+    attitude: attitude,
+    next_plan: nextPlan,
+    composed_report: composed
   }, { onConflict: 'student_id,note_date' });
   if(error){ alert('저장 실패: '+error.message); return; }
 
-  toggleClassLogInline(studentId);
+  document.getElementById('hsLogPreview_'+studentId).textContent = composed;
   document.getElementById('hsPreview_'+studentId).innerHTML = `
     <span class="hs-log-item"><strong>오늘 수업</strong> ${content ? escapeHtml(content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
     <span class="hs-log-item"><strong>오늘 과제</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
