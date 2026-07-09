@@ -212,6 +212,15 @@
   .hs-log-empty{color:var(--ink-soft);font-style:italic;}
   .hs-quick-hw{display:flex;gap:8px;align-items:center;}
   .hs-quick-hw input{flex:1;}
+  .hs-att-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:2px 0;}
+  .att-quick-btn{border:1px solid var(--line);background:#fff;color:var(--ink-soft);font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;}
+  .att-quick-btn.active.present{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .att-quick-btn.active.late{background:var(--warn2, #b8862f);border-color:#b8862f;color:#fff;}
+  .att-quick-btn.active.absent{background:var(--warn);border-color:var(--warn);color:#fff;}
+  .hs-att-row .hs-actions{margin-left:auto;}
+  .hs-quick-log{display:flex;flex-direction:column;gap:6px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px;}
+  .hs-quick-log label{font-size:11px;color:var(--ink-soft);font-weight:700;margin-top:2px;}
+  .hs-quick-log textarea{width:100%;}
   .cl-prev-rate{background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;color:var(--ink-soft);}
   footer{text-align:center;padding:20px;color:var(--ink-soft);font-size:12px;font-family:var(--mono);}
   #loginScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
@@ -1026,14 +1035,21 @@ async function renderHomeStudentList(){
   let html = `<h2 style="margin:0 0 16px;">${classTime || '반 미배정'} <span style="color:var(--ink-soft);font-weight:400;font-size:14px;">(${list.length}명)</span></h2><div class="home-student-list">`;
   list.forEach(s=>{
     const log = todayLogs[s.id];
+    const attToday = attendance.find(a=>a.studentId===s.id && a.date===todayStr());
+    const attStatus = attToday ? attToday.status : null;
     html += `<div class="home-student-row" id="hsRow_${s.id}">
       <div class="hs-row-top">
         <span class="hs-name" onclick="openStudentDetail('${s.id}')" title="상세보기">${escapeHtml(s.name)}</span>
         <span class="hs-meta">${escapeHtml(s.grade)||''} · ${escapeHtml(s.school)||'학교 미입력'}</span>
+      </div>
+      <div class="hs-att-row">
+        <button class="att-quick-btn ${attStatus==='출석'?'active present':''}" onclick="quickSetAttendance('${s.id}','출석')">출석</button>
+        <button class="att-quick-btn ${attStatus==='지각'?'active late':''}" onclick="quickSetAttendance('${s.id}','지각')">지각</button>
+        <button class="att-quick-btn ${attStatus==='결석'?'active absent':''}" onclick="quickSetAttendance('${s.id}','결석')">결석</button>
         <span class="hs-actions">
-          <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">숙제 내주기</button>
-          <button class="btn btn-ghost btn-sm" onclick="goToCounselingFor('${s.id}')">상담 일지</button>
-          <button class="btn btn-ghost btn-sm" onclick="openClassLogPanel('${s.id}')">수업일지</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">숙제</button>
+          <button class="btn btn-ghost btn-sm" onclick="goToCounselingFor('${s.id}')">상담일지</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleClassLogInline('${s.id}')">수업일지</button>
         </span>
       </div>
       <div class="hs-log-preview" id="hsPreview_${s.id}">
@@ -1045,6 +1061,15 @@ async function renderHomeStudentList(){
         <button class="btn btn-primary btn-sm" onclick="saveQuickHomework('${s.id}')">저장</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">취소</button>
       </div>
+      <div class="hs-quick-log" id="hsQuickLog_${s.id}" style="display:none;">
+        <label>수업 내용</label>
+        <textarea id="hsLogContent_${s.id}" rows="2" placeholder="오늘 진도, 다룬 내용을 적어주세요.">${log && log.lesson_content ? escapeHtml(log.lesson_content) : ''}</textarea>
+        <label>특이사항</label>
+        <textarea id="hsLogNotes_${s.id}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
+        <div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(s.id)}</div>
+        <button class="btn btn-primary btn-sm" onclick="saveQuickClassLog('${s.id}')">저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleClassLogInline('${s.id}')">취소</button>
+      </div>
     </div>`;
   });
   html += `</div>`;
@@ -1053,6 +1078,8 @@ async function renderHomeStudentList(){
 
 function toggleQuickHomework(studentId){
   const box = document.getElementById('hsQuickHw_'+studentId);
+  const logBox = document.getElementById('hsQuickLog_'+studentId);
+  if(logBox) logBox.style.display = 'none';
   const isOpen = box.style.display !== 'none';
   box.style.display = isOpen ? 'none' : 'flex';
   if(!isOpen){
@@ -1085,6 +1112,71 @@ async function saveQuickHomework(studentId){
   document.getElementById('hsPreview_'+studentId).innerHTML = `
     <span class="hs-log-item"><strong>오늘 수업</strong> ${existing && existing.lesson_content ? escapeHtml(existing.lesson_content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
     <span class="hs-log-item"><strong>오늘 과제</strong> ${escapeHtml(text)}</span>`;
+}
+
+// 홈 화면에서 출결을 바로 체크 (다시 누르면 취소)
+async function quickSetAttendance(studentId, status){
+  const row = document.getElementById('hsRow_'+studentId);
+  const existing = attendance.find(a=>a.studentId===studentId && a.date===todayStr());
+  const newStatus = (existing && existing.status === status) ? null : status;
+
+  if(newStatus === null){
+    // 같은 버튼을 다시 누르면 그날 출결 기록 삭제 (취소)
+    const { error } = await sb.from('attendance').delete().eq('student_id', studentId).eq('date', todayStr());
+    if(error){ alert('처리 실패: '+error.message); return; }
+  } else {
+    const { error } = await sb.from('attendance')
+      .upsert({ student_id: studentId, date: todayStr(), status: newStatus }, { onConflict: 'student_id,date' });
+    if(error){ alert('처리 실패: '+error.message); return; }
+  }
+
+  await loadAttendance();
+  renderKpiBar();
+  // 버튼 상태만 갱신 (전체 리스트를 다시 그리지 않고 이 행만)
+  if(row){
+    row.querySelectorAll('.att-quick-btn').forEach(b=>b.classList.remove('active','present','late','absent'));
+    if(newStatus){
+      const idx = { '출석':0, '지각':1, '결석':2 }[newStatus];
+      const btn = row.querySelectorAll('.att-quick-btn')[idx];
+      const cls = newStatus==='출석'?'present':newStatus==='지각'?'late':'absent';
+      btn.classList.add('active', cls);
+    }
+  }
+}
+
+// 수업일지(수업 내용/특이사항)를 그 자리에서 펼쳐서 바로 입력
+function toggleClassLogInline(studentId){
+  const box = document.getElementById('hsQuickLog_'+studentId);
+  const hwBox = document.getElementById('hsQuickHw_'+studentId);
+  if(hwBox) hwBox.style.display = 'none'; // 숙제 입력창은 닫아줌
+  const isOpen = box.style.display !== 'none';
+  box.style.display = isOpen ? 'none' : 'flex';
+  if(!isOpen){
+    document.getElementById('hsLogContent_'+studentId).focus();
+  }
+}
+
+async function saveQuickClassLog(studentId){
+  const s = findStudent(studentId); if(!s) return;
+  const content = document.getElementById('hsLogContent_'+studentId).value.trim();
+  const notes = document.getElementById('hsLogNotes_'+studentId).value.trim();
+
+  const { data: existing } = await sb.from('class_logs').select('*')
+    .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
+
+  const { error } = await sb.from('class_logs').upsert({
+    student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
+    lesson_content: content,
+    today_homework: existing ? existing.today_homework : '',
+    prev_homework_rate: computePrevHomeworkRate(studentId),
+    special_notes: notes
+  }, { onConflict: 'student_id,note_date' });
+  if(error){ alert('저장 실패: '+error.message); return; }
+
+  toggleClassLogInline(studentId);
+  document.getElementById('hsPreview_'+studentId).innerHTML = `
+    <span class="hs-log-item"><strong>오늘 수업</strong> ${content ? escapeHtml(content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
+    <span class="hs-log-item"><strong>오늘 과제</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
 }
 
 /* =========================================================
