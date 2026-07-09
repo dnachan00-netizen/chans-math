@@ -1492,7 +1492,7 @@ function countUrgentPending(){
   return n;
 }
 
-function renderKpiBar(){
+async function renderKpiBar(){
   const bar = document.getElementById('kpiBar');
   if(!bar || currentRole !== 'staff') return;
 
@@ -1501,37 +1501,41 @@ function renderKpiBar(){
   const scheduledToday = group ? students.filter(s=>s.class_time && s.class_time.startsWith(group)) : [];
   const uncheckedToday = scheduledToday.filter(s=>!attendance.some(a=>a.studentId===s.id && a.date===todayStr()));
 
-  // 카드2: 이번 달 평균 출석률
-  const thisMonth = todayStr().slice(0,7); // YYYY-MM
-  const monthAtt = attendance.filter(a=>a.date && a.date.startsWith(thisMonth));
-  const monthRate = monthAtt.length ? Math.round(monthAtt.filter(a=>a.status==='출석').length / monthAtt.length * 100) : null;
+  // 카드2: 오늘 수업일지 작성 현황 (오늘 수업 대상 학생 중 몇 명 작성됐는지)
+  let logWrittenCount = 0;
+  if(scheduledToday.length){
+    const { data: logsToday } = await sb.from('class_logs').select('student_id')
+      .eq('note_date', todayStr()).in('student_id', scheduledToday.map(s=>s.id));
+    logWrittenCount = logsToday ? logsToday.length : 0;
+  }
 
   // 카드3: 마감임박 숙제(미제출)
   const urgentCount = countUrgentPending();
 
-  // 카드4: 전체 학생 수
-  const totalStudents = students.length;
+  // 카드4: 상담 후속조치 필요 (체크된 상담 일지 누적 건수)
+  const { count: followUpCount } = await sb.from('counseling_notes')
+    .select('id', { count: 'exact', head: true }).eq('follow_up_needed', true);
 
   bar.innerHTML = `
-    <div class="kpi-card ${group ? (uncheckedToday.length>0 ? 'warn':'accent') : ''} clickable" onclick="document.querySelector('.tab-btn[data-tab=attendance]').click()">
+    <div class="kpi-card ${group ? (uncheckedToday.length>0 ? 'warn':'accent') : ''} clickable" onclick="document.querySelector('.tab-btn[data-tab=home]').click()">
       <div class="kpi-label">📋 오늘 출석 체크</div>
       <div class="kpi-value">${group ? uncheckedToday.length : '–'}<span class="unit">${group ? '명 남음' : ''}</span></div>
       <div class="kpi-sub">${group ? `오늘(${group}) 수업 대상 ${scheduledToday.length}명 중` : '오늘은 수업 없는 요일'}</div>
     </div>
-    <div class="kpi-card clickable" onclick="document.querySelector('.tab-btn[data-tab=attendance]').click()">
-      <div class="kpi-label">📊 이번 달 평균 출석률</div>
-      <div class="kpi-value">${monthRate===null?'–':monthRate}<span class="unit">${monthRate===null?'':'%'}</span></div>
-      <div class="kpi-sub">${monthAtt.length}건 기록 기준</div>
+    <div class="kpi-card ${group && logWrittenCount<scheduledToday.length ? '' : 'accent'} clickable" onclick="document.querySelector('.tab-btn[data-tab=home]').click()">
+      <div class="kpi-label">📝 오늘 수업일지 작성</div>
+      <div class="kpi-value">${group ? logWrittenCount : '–'}<span class="unit">${group ? `/${scheduledToday.length}명` : ''}</span></div>
+      <div class="kpi-sub">${group ? '작성 완료 기준' : '오늘은 수업 없는 요일'}</div>
     </div>
     <div class="kpi-card ${urgentCount>0?'warn':''} clickable" onclick="document.querySelector('.tab-btn[data-tab=homework]').click()">
       <div class="kpi-label">⏰ 마감임박 숙제</div>
       <div class="kpi-value">${urgentCount}<span class="unit">건</span></div>
       <div class="kpi-sub">오늘~2일 이내, 미제출 기준</div>
     </div>
-    <div class="kpi-card clickable" onclick="document.querySelector('.tab-btn[data-tab=students]').click()">
-      <div class="kpi-label">👥 전체 학생 수</div>
-      <div class="kpi-value">${totalStudents}<span class="unit">명</span></div>
-      <div class="kpi-sub">재원생 기준</div>
+    <div class="kpi-card ${followUpCount>0?'warn':''} clickable" onclick="document.querySelector('.tab-btn[data-tab=counseling]').click()">
+      <div class="kpi-label">🗒️ 상담 후속조치 필요</div>
+      <div class="kpi-value">${followUpCount||0}<span class="unit">건</span></div>
+      <div class="kpi-sub">체크되어 있는 상담 기준</div>
     </div>`;
 }
 
