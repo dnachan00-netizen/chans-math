@@ -1171,6 +1171,10 @@ async function renderHomeStudentList(){
           <option${log&&log.understanding==='전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요'?' selected':''}>전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요</option>
           <option${log&&log.understanding==='다시 풀거나 설명하려니 조금 헷갈려했어요'?' selected':''}>다시 풀거나 설명하려니 조금 헷갈려했어요</option>
           <option${log&&log.understanding==='오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요'?' selected':''}>오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요</option>
+          <option${log&&log.understanding==='개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요'?' selected':''}>개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요</option>
+          <option${log&&log.understanding==='그래프와 도형을 같이 그려보며 시각적으로 완벽히 이해했어요'?' selected':''}>그래프와 도형을 같이 그려보며 시각적으로 완벽히 이해했어요</option>
+          <option${log&&log.understanding==='오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요'?' selected':''}>오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요</option>
+          <option${log&&log.understanding==='레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요'?' selected':''}>레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요</option>
         </select>
 
         <label>태도</label>
@@ -1182,6 +1186,10 @@ async function renderHomeStudentList(){
           <option${log&&log.attitude==='숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요'?' selected':''}>숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요</option>
           <option${log&&log.attitude==='모르는 것을 부끄러워하지 않고 적극적으로 질문했어요'?' selected':''}>모르는 것을 부끄러워하지 않고 적극적으로 질문했어요</option>
           <option${log&&log.attitude==='오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요'?' selected':''}>오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요</option>
+          <option${log&&log.attitude==='어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요'?' selected':''}>어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요</option>
+          <option${log&&log.attitude==='시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요'?' selected':''}>시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요</option>
+          <option${log&&log.attitude==='문제를 재미있어하면서 적극적으로 참여했어요'?' selected':''}>문제를 재미있어하면서 적극적으로 참여했어요</option>
+          <option${log&&log.attitude==='칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요'?' selected':''}>칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요</option>
         </select>
 
         <label>다음 시간 계획</label>
@@ -1189,6 +1197,16 @@ async function renderHomeStudentList(){
 
         <label>오늘 메모 (특이사항)</label>
         <textarea id="hsLogNotes_${s.id}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
+
+        <label>마무리 인사</label>
+        <select id="hsLogClosing_${s.id}">
+          <option${!log||!log.closing_mood||log.closing_mood==='감사합니다!'?' selected':''}>감사합니다!</option>
+          <option${log&&log.closing_mood==='감사합니다! 평안한 밤 보내세요!'?' selected':''}>감사합니다! 평안한 밤 보내세요!</option>
+          <option${log&&log.closing_mood==='감사합니다! 오늘 하루도 고생 많으셨어요!'?' selected':''}>감사합니다! 오늘 하루도 고생 많으셨어요!</option>
+          <option${log&&log.closing_mood==='감사합니다! 주말 잘 보내세요!'?' selected':''}>감사합니다! 주말 잘 보내세요!</option>
+          <option${log&&log.closing_mood==='감사합니다! 활기찬 한 주 보내세요!'?' selected':''}>감사합니다! 활기찬 한 주 보내세요!</option>
+          <option${log&&log.closing_mood==='감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!'?' selected':''}>감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!</option>
+        </select>
 
         <div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(s.id)}</div>
         <div class="cl-report-preview" id="hsLogPreview_${s.id}"></div>
@@ -1346,7 +1364,7 @@ function toSentence(text){
 }
 
 // 수업 내용/숙제수행/이해도/태도/다음계획/오늘메모를 하나의 자연스러운 문단으로 조합
-function composeClassReport(studentName, { lessonContent, hwState, understanding, attitude, nextPlan, notes }){
+function composeClassReport(studentName, { lessonContent, hwState, understanding, attitude, nextPlan, notes, closingMood }){
   const today = new Date();
   const dateLabel = `${today.getMonth()+1}월 ${today.getDate()}일`;
 
@@ -1362,7 +1380,7 @@ function composeClassReport(studentName, { lessonContent, hwState, understanding
 
   let out = `📌 ${dateLabel} 수업\n${todayLines.join('\n')}`;
   if(nextLines.length) out += `\n\n📌 다음 시간\n${nextLines.join('\n')}`;
-  out += `\n\n오늘도 수고 많았어요, 감사합니다!`;
+  out += `\n\n${closingMood || '감사합니다!'}`;
   return out;
 }
 
@@ -1386,11 +1404,12 @@ async function saveQuickClassLog(studentId){
   const understanding = document.getElementById('hsLogUnderstanding_'+studentId).value;
   const attitude = document.getElementById('hsLogAttitude_'+studentId).value;
   const nextPlan = document.getElementById('hsLogNextPlan_'+studentId).value.trim();
+  const closingMood = document.getElementById('hsLogClosing_'+studentId).value;
 
   const { data: existing } = await sb.from('class_logs').select('*')
     .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
 
-  const composed = composeClassReport(s.name, { lessonContent: content, hwState, understanding, attitude, nextPlan, notes });
+  const composed = composeClassReport(s.name, { lessonContent: content, hwState, understanding, attitude, nextPlan, notes, closingMood });
 
   const { error } = await sb.from('class_logs').upsert({
     student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
@@ -1402,6 +1421,7 @@ async function saveQuickClassLog(studentId){
     understanding: understanding,
     attitude: attitude,
     next_plan: nextPlan,
+    closing_mood: closingMood,
     composed_report: composed
   }, { onConflict: 'student_id,note_date' });
   if(error){ alert('저장 실패: '+error.message); return; }
