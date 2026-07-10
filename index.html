@@ -1357,10 +1357,10 @@ function selectHwState(studentId, btn){
 
 // 짧은 선택지를 학부모님께 보내기 좋은 자연스러운 문장으로 바꿔주는 사전
 const HW_STATE_SENTENCE = {
-  '완료': s => `${s} 학생이 숙제를 잘 해와서 꼼꼼히 확인하고 넘어갔어요.`,
-  '일부': s => `${s} 학생 숙제는 일부 해왔고, 모르는 문제 위주로 같이 짚어가며 풀었어요.`,
-  '미완료': s => `${s} 학생이 사정이 있어 숙제를 다 하지 못해서, 오늘 할 수 있는 부분부터 같이 확인했어요.`,
-  '없음': s => `${s} 학생 오늘은 따로 숙제가 없어서 지난 시간 내용을 복습하고 진도를 이어갔어요.`
+  '완료': s => `${s} 학생이 숙제를 잘 해와서 꼼꼼히 확인했습니다.`,
+  '일부': s => `${s} 학생 숙제는 일부 해왔고, 모르는 문제 위주로 함께 확인했습니다.`,
+  '미완료': s => `${s} 학생이 사정이 있어 숙제를 다 하지 못해, 오늘 할 수 있는 부분부터 함께 확인했습니다.`,
+  '없음': s => `${s} 학생은 오늘 따로 숙제가 없어 지난 시간 내용을 복습하고 진도를 이어갔습니다.`
 };
 
 function toSentence(text){
@@ -1375,14 +1375,14 @@ function composeClassReport(studentName, { lessonContent, hwState, understanding
   const dateLabel = `${today.getMonth()+1}월 ${today.getDate()}일`;
 
   const todayLines = [];
-  if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 진도 나갔어요'));
+  if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 진도를 나갔습니다'));
   if(hwState && HW_STATE_SENTENCE[hwState]) todayLines.push(HW_STATE_SENTENCE[hwState](studentName));
   if(understanding) todayLines.push(toSentence(understanding));
   if(attitude) todayLines.push(toSentence(attitude));
   if(notes) todayLines.push(toSentence(notes));
 
   const nextLines = [];
-  if(nextPlan) nextLines.push(toSentence(`다음 시간에는 ${nextPlan}`) .replace(/\.$/, '') + ' 확인하고 이어서 진도 나갈게요.');
+  if(nextPlan) nextLines.push(toSentence(`다음 시간에는 ${nextPlan}`) .replace(/\.$/, '') + ' 확인하고 이어서 진도를 나가겠습니다.');
 
   let out = `📌 ${dateLabel} 수업\n${todayLines.join('\n')}`;
   if(nextLines.length) out += `\n\n📌 다음 시간\n${nextLines.join('\n')}`;
