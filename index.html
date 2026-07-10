@@ -1563,7 +1563,7 @@ async function loadCounselingNotes(){
   const { data, error } = await sb.from('counseling_notes').select('*').order('note_date', {ascending:false});
   if(error){ alert('상담 일지를 불러오지 못했습니다: '+error.message); return; }
   counselingNotes = (data || []).map(n=>({
-    ...n, studentId:n.student_id, followUpNeeded:n.follow_up_needed, notionPageId:n.notion_page_id, date:n.note_date
+    ...n, studentId:n.student_id, followUpNeeded:n.follow_up_needed, followUpResolved:n.follow_up_resolved, notionPageId:n.notion_page_id, date:n.note_date
   }));
 }
 
@@ -1585,18 +1585,30 @@ function renderCounselingList(){
   let html = `<table><thead><tr><th>날짜</th><th>학생</th><th>제목</th><th>대상</th><th>후속조치</th><th>노션 동기화</th><th></th></tr></thead><tbody>`;
   counselingNotes.forEach(n=>{
     const s = findStudent(n.studentId);
+    let followUpCell = '-';
+    if(n.followUpNeeded){
+      followUpCell = n.followUpResolved
+        ? `<span class="badge badge-present">처리완료</span> <button class="btn btn-ghost btn-sm" onclick="toggleFollowUpResolved('${n.id}',false)">되돌리기</button>`
+        : `<span class="badge badge-late">필요</span> <button class="btn btn-ghost btn-sm" onclick="toggleFollowUpResolved('${n.id}',true)">처리완료로</button>`;
+    }
     html += `<tr>
       <td>${fmtDate(n.date)}</td>
       <td>${s ? escapeHtml(s.name) : '(삭제된 학생)'}</td>
       <td>${escapeHtml(n.title)}</td>
       <td>${escapeHtml(n.target)}</td>
-      <td>${n.followUpNeeded ? '<span class="badge badge-late">필요</span>' : '-'}</td>
+      <td>${followUpCell}</td>
       <td>${n.notionPageId ? '<span class="badge badge-present">완료</span>' : '<span class="badge badge-late">대기중</span>'}</td>
       <td><button class="btn btn-warn btn-sm" onclick="deleteCounselingNote('${n.id}')">삭제</button></td>
     </tr>`;
   });
   html += `</tbody></table>`;
   wrap.innerHTML = html;
+}
+
+async function toggleFollowUpResolved(noteId, resolved){
+  const { error } = await sb.from('counseling_notes').update({ follow_up_resolved: resolved }).eq('id', noteId);
+  if(error){ alert('처리 실패: '+error.message); return; }
+  await loadCounselingNotes(); renderCounselingList(); renderKpiBar();
 }
 
 document.getElementById('addCnBtn').addEventListener('click', async ()=>{
@@ -1668,9 +1680,10 @@ async function renderKpiBar(){
   // 카드3: 마감임박 숙제(미제출)
   const urgentCount = countUrgentPending();
 
-  // 카드4: 상담 후속조치 필요 (체크된 상담 일지 누적 건수)
+  // 카드4: 상담 후속조치 필요 (처리완료 표시 안 된 것만 = 실제 미해결 건수)
   const { count: followUpCount } = await sb.from('counseling_notes')
-    .select('id', { count: 'exact', head: true }).eq('follow_up_needed', true);
+    .select('id', { count: 'exact', head: true })
+    .eq('follow_up_needed', true).eq('follow_up_resolved', false);
 
   bar.innerHTML = `
     <div class="kpi-card ${group ? (uncheckedToday.length>0 ? 'warn':'accent') : ''} clickable" onclick="document.querySelector('.tab-btn[data-tab=home]').click()">
@@ -1691,7 +1704,7 @@ async function renderKpiBar(){
     <div class="kpi-card ${followUpCount>0?'warn':''} clickable" onclick="document.querySelector('.tab-btn[data-tab=counseling]').click()">
       <div class="kpi-label">🗒️ 상담 후속조치</div>
       <div class="kpi-value">${followUpCount||0}<span class="unit">건</span></div>
-      <div class="kpi-sub">체크되어 있는 상담 기준</div>
+      <div class="kpi-sub">처리 안 된 건 기준</div>
     </div>`;
 }
 
