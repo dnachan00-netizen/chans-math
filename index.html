@@ -440,7 +440,16 @@
       <h2>숙제 내주기</h2>
       <p class="desc">반 전체에 내주거나, 특정 학생 한 명에게만 개별로 낼 수 있습니다.</p>
       <div class="grid-form">
-        <div><label>제목</label><input type="text" id="hwTitle" placeholder="예: 2단원 익힘책 12~15쪽"></div>
+        <div>
+          <label>제목</label>
+          <select id="hwTitleSelect">
+            <option value="프린트 풀이">프린트 풀이</option>
+            <option value="일일학습">일일학습</option>
+            <option value="오답정리">오답정리</option>
+            <option value="__custom__">기타 (직접입력)</option>
+          </select>
+          <input type="text" id="hwTitleCustom" placeholder="제목을 입력해 주세요" style="display:none;margin-top:6px;">
+        </div>
         <div><label>마감일</label><input type="date" id="hwDueDate"></div>
         <div><label>대상 반 (반 전체에 낼 때)</label>
           <select id="hwClassTime">
@@ -1831,14 +1840,24 @@ function goToUrgentHomework(){
   if(tabBtn) tabBtn.click();
 }
 
+document.getElementById('hwTitleSelect').addEventListener('change', ()=>{
+  const isCustom = document.getElementById('hwTitleSelect').value === '__custom__';
+  const customInput = document.getElementById('hwTitleCustom');
+  customInput.style.display = isCustom ? 'block' : 'none';
+  if(isCustom) customInput.focus(); else customInput.value = '';
+});
+
 document.getElementById('addHwBtn').addEventListener('click', async ()=>{
-  const title = document.getElementById('hwTitle').value.trim();
+  const titleSelectVal = document.getElementById('hwTitleSelect').value;
+  const title = titleSelectVal === '__custom__'
+    ? document.getElementById('hwTitleCustom').value.trim()
+    : titleSelectVal;
   const dueDate = document.getElementById('hwDueDate').value;
   const classTime = document.getElementById('hwClassTime').value;
   const studentId = document.getElementById('hwStudent').value;
   const description = document.getElementById('hwDesc').value.trim();
   const sendKakao = document.getElementById('hwSendKakao').checked;
-  if(!title){ alert('숙제 제목을 입력해 주세요.'); return; }
+  if(!title){ alert('숙제 제목을 선택하거나 직접 입력해 주세요.'); return; }
   if(!classTime && !studentId){ alert('대상 반 또는 대상 학생 중 하나는 선택해 주세요.'); return; }
   const { error } = await sb.from('assignments').insert({
     title, description, due_date: dueDate || null,
@@ -1846,7 +1865,9 @@ document.getElementById('addHwBtn').addEventListener('click', async ()=>{
     send_kakao_reminder: sendKakao
   });
   if(error){ alert('등록 실패: '+error.message); return; }
-  document.getElementById('hwTitle').value=''; document.getElementById('hwDesc').value='';
+  document.getElementById('hwTitleSelect').value='프린트 풀이';
+  document.getElementById('hwTitleCustom').style.display='none'; document.getElementById('hwTitleCustom').value='';
+  document.getElementById('hwDesc').value='';
   document.getElementById('hwClassTime').value=''; document.getElementById('hwStudent').value='';
   document.getElementById('hwSendKakao').checked = true;
   await loadAssignmentsAndSubmissions();
