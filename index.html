@@ -42,6 +42,7 @@
 
   /* 학생 모드: 상단 헤더 간소화 + 하단 탭바(앱 느낌) */
   body.student-mode header{padding:14px 20px;}
+  body.guardian-mode header{border-bottom-color:#b5583a;}
   body.student-mode header .who,
   body.student-mode header .today,
   body.student-mode #alertBell{display:none;}
@@ -86,6 +87,9 @@
   #guardianView nav.tabs button .tab-icon{font-size:21px;line-height:1;}
   #guardianView nav.tabs button.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
   #guardianChildSelectWrap select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:14px;font-family:var(--sans);background:var(--panel);color:var(--ink);margin:0 0 4px;}
+
+  /* 학부모 화면 전용 강조색 (학생 화면과 시각적으로 구분되는 테라코타 계열) */
+  #guardianView{ --accent:#b5583a; --accent-soft:#f6e6de; }
 
   .staff-layout{display:flex;align-items:stretch;}
   .sidebar{width:220px;flex-shrink:0;background:var(--ink);min-height:calc(100vh - 68px);padding:22px 0;display:flex;flex-direction:column;gap:2px;}
@@ -892,6 +896,7 @@ async function enterApp(session){
 
   if(currentRole === 'staff'){
     document.body.classList.remove('student-mode');
+    document.body.classList.remove('guardian-mode');
     document.getElementById('staffView').style.display = 'flex';
     document.getElementById('studentView').style.display = 'none';
     document.getElementById('guardianView').style.display = 'none';
@@ -901,7 +906,8 @@ async function enterApp(session){
     renderHwList();
   } else if(currentRole === 'guardian'){
     document.body.classList.add('student-mode');
-    document.querySelector('header h1').textContent = '찬스수학';
+    document.body.classList.add('guardian-mode');
+    document.querySelector('header h1').textContent = '찬스수학 · 학부모';
     document.getElementById('staffView').style.display = 'none';
     document.getElementById('studentView').style.display = 'none';
     document.getElementById('guardianView').style.display = 'block';
@@ -909,6 +915,7 @@ async function enterApp(session){
     await initGuardianPushPrompt();
   } else {
     document.body.classList.add('student-mode');
+    document.body.classList.remove('guardian-mode');
     document.querySelector('header h1').textContent = '찬스수학';
     document.getElementById('staffView').style.display = 'none';
     document.getElementById('studentView').style.display = 'block';
