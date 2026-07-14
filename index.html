@@ -201,9 +201,10 @@
   .hw-file-empty{font-size:12.5px;color:var(--ink-soft);font-style:italic;}
 
   /* 학생용 숙제 목록: 상태별로 즉각 구분되도록 (해야 할 숙제 / 다 한 숙제) */
-  .hw-group-label{font-family:var(--mono);font-size:12px;letter-spacing:1px;color:var(--ink-soft);margin:18px 0 8px;display:flex;align-items:center;gap:6px;}
+  .hw-group-label{font-family:var(--sans);font-size:19px;font-weight:800;letter-spacing:-0.3px;color:var(--late);margin:24px 0 12px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2.5px solid var(--late-soft);}
+  .hw-group-label .cnt{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ink-soft);margin-left:2px;}
   .hw-group-label:first-child{margin-top:0;}
-  .hw-group-label.done-label{color:var(--accent);}
+  .hw-group-label.done-label{color:var(--accent);border-bottom-color:var(--accent-soft);}
   .stu-hw-card{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--panel);}
   .stu-hw-card.todo{border-left:5px solid var(--late);background:var(--late-soft);}
   .stu-hw-card.urgent{border-left:5px solid var(--warn);background:var(--warn-soft);}
@@ -2600,11 +2601,11 @@ function renderMyHw(){
 
   let html = '';
   if(todoList.length){
-    html += `<div class="hw-group-label">📌 해야 할 숙제 (${todoList.length})</div>`;
+    html += `<div class="hw-group-label">📌 해야 할 숙제 <span class="cnt">(${todoList.length})</span></div>`;
     html += todoList.map(hw=>hwCardHtml(hw,false)).join('');
   }
   if(doneList.length){
-    html += `<div class="hw-group-label done-label">✅ 다 한 숙제 (${doneList.length})</div>`;
+    html += `<div class="hw-group-label done-label">✅ 다 한 숙제 <span class="cnt">(${doneList.length})</span></div>`;
     html += doneList.map(hw=>hwCardHtml(hw,true)).join('');
   }
   wrap.innerHTML = html;
