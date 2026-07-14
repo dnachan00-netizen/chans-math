@@ -508,6 +508,17 @@
     </div>
     <div class="panel">
       <h2 style="margin:0 0 16px;">숙제 목록 · 제출 현황</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+        <select id="hwFilterStudent" style="max-width:220px;">
+          <option value="">전체 학생</option>
+        </select>
+        <input type="text" id="hwFilterKeyword" placeholder="제목·내용 검색" style="max-width:220px;">
+        <select id="hwFilterStatus" style="max-width:160px;">
+          <option value="">전체 상태</option>
+          <option value="pending">진행중(미완료)</option>
+          <option value="done">전원 제출완료</option>
+        </select>
+      </div>
       <div id="hwListWrap"></div>
     </div>
   </section>
@@ -680,6 +691,10 @@
     <div class="chart-panel">
       <h3>성적 추이</h3>
       <canvas id="detailScoreChart"></canvas>
+    </div>
+    <div class="chart-panel">
+      <h3>숙제 이력 (최신순)</h3>
+      <div id="detailHwListWrap"></div>
     </div>
   </div>
 </div>
@@ -1329,7 +1344,38 @@ function openStudentDetail(id){
     });
   }
 
+  renderDetailHwHistory(id);
+
   document.getElementById('detailModalOverlay').classList.add('open');
+}
+
+// 학생 단위로 지금까지 나간 숙제 전체(개별 지정 + 그 학생이 속했던 반 전체 숙제)를 최신순으로 모음
+function studentHwHistory(studentId){
+  const s = findStudent(studentId);
+  if(!s) return [];
+  return assignments
+    .filter(hw => hw.student_id === studentId || (!hw.student_id && hw.class_time === s.class_time))
+    .slice()
+    .sort((a,b)=> (b.due_date || b.created_at || '').localeCompare(a.due_date || a.created_at || ''));
+}
+
+function renderDetailHwHistory(studentId){
+  const wrap = document.getElementById('detailHwListWrap');
+  const list = studentHwHistory(studentId);
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">등록된 숙제가 없습니다.</div>`; return; }
+  let html = `<table><thead><tr><th>제목</th><th>마감일</th><th>제출 여부</th><th>제출 내용</th><th>선생님 피드백</th></tr></thead><tbody>`;
+  list.forEach(hw=>{
+    const sub = submissions.find(x=>x.assignment_id===hw.id && x.student_id===studentId);
+    html += `<tr>
+      <td>${escapeHtml(hw.title)}</td>
+      <td>${hw.due_date ? fmtDate(hw.due_date) : '-'}</td>
+      <td>${sub && sub.submitted_at ? `<span class="badge badge-present">제출완료</span>` : `<span class="badge badge-absent">미제출</span>`}</td>
+      <td>${sub && sub.content ? escapeHtml(sub.content) : '-'}</td>
+      <td>${sub && sub.teacher_feedback ? escapeHtml(sub.teacher_feedback) : '-'}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
 }
 
 function renderDetailCalendar(){
@@ -2190,6 +2236,10 @@ function goToUrgentHomework(){
   if(tabBtn) tabBtn.click();
 }
 
+document.getElementById('hwFilterStudent').addEventListener('change', renderHwList);
+document.getElementById('hwFilterKeyword').addEventListener('input', renderHwList);
+document.getElementById('hwFilterStatus').addEventListener('change', renderHwList);
+
 document.getElementById('hwTitleSelect').addEventListener('change', ()=>{
   const isCustom = document.getElementById('hwTitleSelect').value === '__custom__';
   const customInput = document.getElementById('hwTitleCustom');
@@ -2264,12 +2314,61 @@ async function deleteAssignment(id){
   renderHwList();
 }
 
+function populateHwFilterStudent(){
+  const sel = document.getElementById('hwFilterStudent');
+  const prevVal = sel.value;
+  const sorted = students.slice().sort((a,b)=>{
+    const diff = classSortIndex(a.class_time) - classSortIndex(b.class_time);
+    if(diff !== 0) return diff;
+    return (a.name||'').localeCompare(b.name||'', 'ko');
+  });
+  sel.innerHTML = '<option value="">전체 학생</option>' +
+    sorted.map(s=>`<option value="${s.id}">${escapeHtml(s.name)} (${escapeHtml(s.class_time)||'반 미배정'})</option>`).join('');
+  if(prevVal) sel.value = prevVal;
+}
+
+function hwMatchesStudentFilter(hw, studentId){
+  if(!studentId) return true;
+  if(hw.student_id) return hw.student_id === studentId;
+  if(hw.class_time){
+    const s = findStudent(studentId);
+    return !!s && s.class_time === hw.class_time;
+  }
+  return false;
+}
+
 function renderHwList(){
+  populateHwFilterStudent();
   const wrap = document.getElementById('hwListWrap');
   updateAlertBell();
   if(assignments.length===0){ wrap.innerHTML = `<div class="empty">등록된 숙제가 없습니다.</div>`; return; }
+
+  const filterStudent = document.getElementById('hwFilterStudent').value;
+  const filterKeyword = document.getElementById('hwFilterKeyword').value.trim().toLowerCase();
+  const filterStatus = document.getElementById('hwFilterStatus').value;
+
+  let filtered = assignments.filter(hw=>{
+    if(!hwMatchesStudentFilter(hw, filterStudent)) return false;
+    if(filterKeyword){
+      const hay = ((hw.title||'')+' '+(hw.description||'')).toLowerCase();
+      if(!hay.includes(filterKeyword)) return false;
+    }
+    return true;
+  });
+
+  if(filterStatus){
+    filtered = filtered.filter(hw=>{
+      const targets = hwTargetStudents(hw);
+      const subForThis = submissions.filter(sub=>sub.assignment_id===hw.id);
+      const doneCount = subForThis.filter(sub=>sub.submitted_at).length;
+      const isDone = targets.length>0 && doneCount===targets.length;
+      return filterStatus==='done' ? isDone : !isDone;
+    });
+  }
+
+  if(filtered.length===0){ wrap.innerHTML = `<div class="empty">조건에 맞는 숙제가 없습니다.</div>`; return; }
   let html = '';
-  assignments.forEach(hw=>{
+  filtered.forEach(hw=>{
     const targets = hwTargetStudents(hw);
     const subForThis = submissions.filter(sub=>sub.assignment_id===hw.id);
     const doneCount = subForThis.filter(sub=>sub.submitted_at).length;
