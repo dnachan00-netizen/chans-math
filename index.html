@@ -659,6 +659,7 @@
   </div>
   <main>
     <div id="guardianChildSelectWrap"></div>
+    <div id="guardianNoticeBanner" style="display:none;"></div>
     <section id="gtab-report" class="tab-panel">
       <div class="panel">
         <h2 style="margin:0 0 16px;">일일 리포트</h2>
@@ -2733,6 +2734,7 @@ async function refreshGuardianPortal(){
   renderGuardianInfo();
   await loadGuardianAnnouncements();
   renderGuardianNotices();
+  renderGuardianNoticeBanner();
 }
 
 async function loadGuardianChildren(){
@@ -2762,6 +2764,7 @@ function renderGuardianChildSelect(){
     renderGuardianReports();
     renderGuardianInfo();
     renderGuardianNotices();
+    renderGuardianNoticeBanner();
   });
 }
 
@@ -2883,6 +2886,62 @@ function renderGuardianNotices(){
     </div>`;
   });
   wrap.innerHTML = html;
+}
+
+// 공지 "읽음" 상태 — DB 저장 없이, 이 기기(브라우저)에서 마지막으로 확인한 공지 ID만 localStorage에 기억
+// (학부모 계정별로 구분해서 저장 — 한 기기에서 여러 학부모 계정을 번갈아 쓰는 경우 대비)
+function getGuardianReadAnnouncementId(){
+  try { return localStorage.getItem('guardianReadAnnouncement_' + currentGuardianId); }
+  catch(e){ return null; }
+}
+function setGuardianReadAnnouncementId(id){
+  try { localStorage.setItem('guardianReadAnnouncement_' + currentGuardianId, id); }
+  catch(e){ /* localStorage 사용 불가 환경이면 조용히 무시 (배너는 다음 진입 때 다시 보일 뿐, 기능엔 지장 없음) */ }
+}
+
+// 지금 선택된 자녀 기준으로 볼 수 있는 공지만 추림 (renderGuardianNotices와 동일한 기준)
+function getVisibleGuardianAnnouncements(){
+  const child = guardianChildren.find(c=>c.id===selectedGuardianChildId);
+  return guardianAnnouncements.filter(a =>
+    !a.target_class_time || (child && a.target_class_time === child.class_time)
+  );
+}
+
+// 첫 화면(리포트 탭) 맨 위에 안 읽은 최신 공지 1건을 배너로 노출
+function renderGuardianNoticeBanner(){
+  const wrap = document.getElementById('guardianNoticeBanner');
+  const visible = getVisibleGuardianAnnouncements(); // created_at 내림차순 정렬 상태 유지됨
+  if(visible.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+
+  const latest = visible[0];
+  if(getGuardianReadAnnouncementId() === latest.id){
+    wrap.style.display = 'none'; wrap.innerHTML = '';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  wrap.innerHTML = `
+    <div id="guardianNoticeBannerInner" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-bottom:14px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--accent);cursor:pointer;">
+      <span style="font-size:17px;line-height:1.3;">📢</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:2px;">새 공지</div>
+        <div style="font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(latest.title)}</div>
+      </div>
+      <button id="guardianNoticeBannerClose" type="button" aria-label="닫기" style="border:none;background:transparent;color:var(--ink-soft);font-size:15px;line-height:1;padding:2px 4px;cursor:pointer;">✕</button>
+    </div>`;
+
+  document.getElementById('guardianNoticeBannerInner').addEventListener('click', (e)=>{
+    if(e.target.id === 'guardianNoticeBannerClose') return;
+    setGuardianReadAnnouncementId(latest.id);
+    wrap.style.display = 'none';
+    const noticeTabBtn = document.querySelector('#guardianView .tab-btn[data-gtab="notice"]');
+    if(noticeTabBtn) noticeTabBtn.click();
+  });
+  document.getElementById('guardianNoticeBannerClose').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    setGuardianReadAnnouncementId(latest.id);
+    wrap.style.display = 'none';
+  });
 }
 
 // 홈 화면에 앱처럼 설치할 수 있도록 서비스워커 등록 (지원 안 하는 브라우저는 조용히 무시)
