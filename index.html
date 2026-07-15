@@ -92,6 +92,7 @@
 
   /* 학부모 화면 전용 톤 — 따뜻한 아이보리 배경 + 절제된 테라코타 (2026-07 디자인 리뉴얼) */
   #guardianView{
+    color-scheme:light;
     --paper:#FAF7F2; --panel:#ffffff; --line:#E8E2D8;
     --ink:#2B2A28; --ink-soft:#A39C8E;
     --accent:#b5583a; --accent-soft:#F3E4D8;
@@ -105,6 +106,7 @@
 
   /* 학생 화면 전용 톤 — 짙은 네이비 배경 + 앰버 포인트 (2026-07 디자인 리뉴얼) */
   #studentView{
+    color-scheme:dark;
     --paper:#10151F; --panel:#171E2C; --line:#26304A;
     --ink:#F1F0EA; --ink-soft:#8B93A8;
     --accent:#EF9F27; --accent-soft:#2A2211;
@@ -213,7 +215,7 @@
   }
   main{padding:28px 32px 60px;max-width:1180px;margin:0 auto;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;margin-bottom:22px;}
-  .panel h2{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px;}
+  .panel h2{margin:0 0 4px;font-size:19px;display:flex;align-items:center;gap:8px;color:var(--ink);}
   .panel .desc{color:var(--ink-soft);font-size:13.5px;margin:0 0 20px;}
   .grid-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:16px;}
   label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;letter-spacing:0.2px;}
@@ -2810,7 +2812,7 @@ function renderMyInfo(){
   const late = attendance.filter(a=>a.status==='지각').length;
   const absent = attendance.filter(a=>a.status==='결석').length;
   document.getElementById('myAttStatRow').innerHTML = `
-    <div class="att-summary-line">전체 ${total}회 · <span style="color:var(--accent);font-weight:700;">출석 ${present}</span> · <span style="color:var(--late);font-weight:700;">지각 ${late}</span> · <span style="color:var(--warn);font-weight:700;">결석 ${absent}</span></div>`;
+    <div class="att-summary-line">전체 ${total}회 · <span style="color:var(--accent);font-weight:700;white-space:nowrap;">출석 ${present}</span> · <span style="color:var(--late);font-weight:700;white-space:nowrap;">지각 ${late}</span> · <span style="color:var(--warn);font-weight:700;white-space:nowrap;">결석 ${absent}</span></div>`;
 
   const attWrap = document.getElementById('myAttTableWrap');
   if(attendance.length===0){ attWrap.innerHTML = `<div class="empty">출결 기록이 없습니다.</div>`; }
