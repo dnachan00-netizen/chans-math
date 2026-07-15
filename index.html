@@ -3006,6 +3006,7 @@ const KIOSK_SECRET_KEY = 'chansMathKioskSecret';
 let kioskStudents = [];
 let kioskAttendanceToday = {}; // student_id -> {check_in_time, check_out_time}
 let kioskSelectedClass = null;
+let kioskShowAllClasses = false; // 수업 없는 요일에도 테스트/보강수업 대응할 수 있도록
 
 function isKioskMode(){
   return new URLSearchParams(location.search).get('kiosk') === '1';
@@ -3088,23 +3089,34 @@ function kioskLock(){
 }
 
 // 오늘 수업 있는 반(월목/화금/토일)의 세부 반 시간대만 버튼으로 노출
+// (수업 없는 요일이거나 보강수업 등으로 필요할 땐 "전체 반 보기" 토글로 전체 반 노출)
 function renderKioskClassButtons(){
   const wrap = document.getElementById('kioskClassButtons');
   const group = todayClassGroup();
-  const todays = kioskStudents.filter(s=> group && s.class_time && s.class_time.startsWith(group));
-  const classTimes = [...new Set(todays.map(s=>s.class_time))].sort();
+  const base = kioskShowAllClasses
+    ? kioskStudents
+    : kioskStudents.filter(s=> group && s.class_time && s.class_time.startsWith(group));
+  const classTimes = [...new Set(base.map(s=>s.class_time).filter(Boolean))].sort();
 
-  if(!group || classTimes.length===0){
-    wrap.innerHTML = `<div class="empty">오늘(${todayKoreanWeekday()}요일)은 예정된 수업이 없습니다.</div>`;
+  const toggleBtn = `<button class="kiosk-lock-btn" onclick="toggleKioskShowAll()" style="margin-bottom:12px;">${kioskShowAllClasses ? '📌 오늘 수업 반만 보기' : '📚 전체 반 보기'}</button>`;
+
+  if(classTimes.length===0){
+    wrap.innerHTML = toggleBtn + `<div class="empty">${kioskShowAllClasses ? '등록된 반이 없습니다.' : `오늘(${todayKoreanWeekday()}요일)은 예정된 수업이 없습니다. 위 버튼으로 전체 반을 볼 수 있어요.`}</div>`;
     document.getElementById('kioskStudentGrid').innerHTML = '';
     return;
   }
   if(!kioskSelectedClass || !classTimes.includes(kioskSelectedClass)) kioskSelectedClass = classTimes[0];
 
-  wrap.innerHTML = classTimes.map(ct=>
+  wrap.innerHTML = toggleBtn + '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + classTimes.map(ct=>
     `<button class="kiosk-class-btn ${ct===kioskSelectedClass?'active':''}" onclick="selectKioskClass('${ct}')">${escapeHtml(ct)}</button>`
-  ).join('');
+  ).join('') + '</div>';
   renderKioskStudentGrid();
+}
+
+function toggleKioskShowAll(){
+  kioskShowAllClasses = !kioskShowAllClasses;
+  kioskSelectedClass = null;
+  renderKioskClassButtons();
 }
 
 function selectKioskClass(ct){
