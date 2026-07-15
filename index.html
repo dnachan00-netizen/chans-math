@@ -2053,20 +2053,20 @@ function renderAttTable(){
   list.sort((a,b)=> b.date.localeCompare(a.date));
   const wrap = document.getElementById('attTableWrap');
   if(list.length===0){ wrap.innerHTML = `<div class="empty">출결 기록이 없습니다.</div>`; return; }
-  let html = `<table><thead><tr><th>날짜</th><th>이름</th><th>학년</th><th>출결 상태</th><th>보강</th></tr></thead><tbody>`;
+  let html = `<table><thead><tr><th>날짜</th><th>이름</th><th>학년</th><th>출결 상태</th><th>등원</th><th>하원</th><th>보강</th></tr></thead><tbody>`;
   list.forEach(a=>{
     const s = findStudent(a.studentId); if(!s) return;
     const badgeClass = a.status==='출석'?'badge-present':a.status==='지각'?'badge-late':'badge-absent';
-    html += `<tr><td class="score-num">${fmtDate(a.date)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.grade)}</td><td><span class="badge ${badgeClass}">${a.status}</span></td><td class="score-num">${a.makeup_date?fmtDate(a.makeup_date):'-'}</td></tr>`;
+    html += `<tr><td class="score-num">${fmtDate(a.date)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.grade)}</td><td><span class="badge ${badgeClass}">${a.status}</span></td><td class="score-num">${a.check_in_time?fmtGuardianTime(a.check_in_time):'-'}</td><td class="score-num">${a.check_out_time?fmtGuardianTime(a.check_out_time):'-'}</td><td class="score-num">${a.makeup_date?fmtDate(a.makeup_date):'-'}</td></tr>`;
   });
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 }
 
 document.getElementById('attExportBtn').addEventListener('click', ()=>{
-  const rows = [['날짜','이름','학년','출결상태','보강']];
+  const rows = [['날짜','이름','학년','출결상태','등원시각','하원시각','보강']];
   attendance.slice().sort((a,b)=>b.date.localeCompare(a.date)).forEach(a=>{
-    const s = findStudent(a.studentId); if(s) rows.push([a.date, s.name, s.grade, a.status, a.makeup_date||'']);
+    const s = findStudent(a.studentId); if(s) rows.push([a.date, s.name, s.grade, a.status, a.check_in_time?fmtGuardianTime(a.check_in_time):'', a.check_out_time?fmtGuardianTime(a.check_out_time):'', a.makeup_date||'']);
   });
   downloadCSV('찬스수학_출결기록.csv', rows);
 });
@@ -2953,7 +2953,10 @@ function renderGuardianInfo(){
     let rows = '';
     sorted.forEach(a=>{
       const badgeClass = a.status==='출석'?'badge-present':a.status==='지각'?'badge-late':'badge-absent';
-      rows += `<tr><td class="score-num">${fmtDate(a.date)}</td><td><span class="badge ${badgeClass}">${a.status}</span></td><td style="font-size:12.5px;color:var(--accent);">${a.makeup_date ? '보강 '+fmtDate(a.makeup_date) : '-'}</td></tr>`;
+      const inT = a.check_in_time ? fmtGuardianTime(a.check_in_time) : null;
+      const outT = a.check_out_time ? fmtGuardianTime(a.check_out_time) : null;
+      const timesCell = (inT || outT) ? `${inT||'-'}→${outT||'-'}` : '-';
+      rows += `<tr><td class="score-num">${fmtDate(a.date)}</td><td><span class="badge ${badgeClass}">${a.status}</span></td><td style="font-size:11.5px;">${timesCell}</td><td style="font-size:12px;color:var(--accent);">${a.makeup_date ? '보강 '+fmtDate(a.makeup_date) : '-'}</td></tr>`;
     });
     attBox.innerHTML = `<details class="g-report-item">
       <summary>
@@ -2961,7 +2964,7 @@ function renderGuardianInfo(){
         <span class="g-report-toggle"></span>
       </summary>
       <div class="g-report-body" style="padding:0 0 12px;">
-        <table><thead><tr><th>날짜</th><th>출결 상태</th><th>보강</th></tr></thead><tbody>${rows}</tbody></table>
+        <table><thead><tr><th>날짜</th><th>상태</th><th>등하원</th><th>보강</th></tr></thead><tbody>${rows}</tbody></table>
       </div>
     </details>`;
   }
