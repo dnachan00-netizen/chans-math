@@ -987,6 +987,19 @@ function ddayInfo(dueDateStr){
 
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function fmtDate(str){ if(!str) return '-'; const [y,m,d]=str.split('-'); return `${y}.${m}.${d}`; }
+// 숙제 출제일(assignments.created_at, timestamptz) → 한국 시간 기준 날짜만 뽑아서 fmtDate와 동일한 형식으로
+function fmtCreatedDate(iso){
+  if(!iso) return null;
+  const kstDateStr = new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+  return fmtDate(kstDateStr);
+}
+// 숙제 카드(출제일/마감일) 전용 — 연도 없이 월.일만 (항상 최근 날짜만 다루는 화면이라 연도가 불필요)
+function fmtDateShort(str){ if(!str) return '-'; const [,m,d] = str.split('-'); return `${m}.${d}`; }
+function fmtCreatedDateShort(iso){
+  if(!iso) return null;
+  const kstDateStr = new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+  return fmtDateShort(kstDateStr);
+}
 function findStudent(id){ return students.find(s=>s.id===id); }
 function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function downloadCSV(filename, rows){
@@ -2634,7 +2647,7 @@ function renderMyHw(){
 
     const bodyHtml = `
       <p style="color:var(--ink-soft);font-size:13px;margin:6px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span>${hw.due_date ? '마감 '+fmtDate(hw.due_date) : '마감일 없음'}</span>
+        <span>${fmtCreatedDateShort(hw.created_at) ? '출제 '+fmtCreatedDateShort(hw.created_at)+' · ' : ''}${hw.due_date ? '마감 '+fmtDateShort(hw.due_date) : '마감일 없음'}</span>
         ${dd && !isDone ? `<span class="dday ${dd.cls}">${dd.text}</span>` : ''}
       </p>
       ${hw.description ? `<p style="font-size:14px;margin:8px 0 12px;">${escapeHtml(hw.description)}</p>` : ''}
@@ -2964,7 +2977,7 @@ function renderGuardianInfo(){
         <strong>${escapeHtml(hw.title)}</strong>
         <span class="badge ${submitted?'badge-present':'badge-late'}">${submitted?'✅ 제출완료':'미제출'}</span>
       </div>
-      <p style="color:var(--ink-soft);font-size:13px;margin:6px 0;">${hw.due_date?'마감 '+fmtDate(hw.due_date):'마감일 없음'}</p>
+      <p style="color:var(--ink-soft);font-size:13px;margin:6px 0;">${fmtCreatedDateShort(hw.created_at) ? '출제 '+fmtCreatedDateShort(hw.created_at)+' · ' : ''}${hw.due_date?'마감 '+fmtDateShort(hw.due_date):'마감일 없음'}</p>
       ${sub && sub.teacher_feedback ? `<div style="margin-top:8px;padding:10px;background:var(--accent-soft);border-radius:8px;font-size:13px;color:var(--accent);"><strong>선생님 피드백:</strong> ${escapeHtml(sub.teacher_feedback)}</div>` : ''}
     </div>`;
   });
