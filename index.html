@@ -41,8 +41,10 @@
   nav.tabs button.active{color:var(--ink);background:var(--panel);box-shadow:0 -2px 0 var(--accent) inset;}
 
   /* 학생 모드: 상단 헤더 간소화 + 하단 탭바(앱 느낌) */
-  body.student-mode header{padding:14px 20px;}
+  body.student-mode header{padding:14px 20px;border-bottom-color:#EF9F27;}
+  body.student-mode header .brand .mark{color:#EF9F27;background:rgba(239,159,39,0.18);}
   body.guardian-mode header{border-bottom-color:#b5583a;}
+  body.guardian-mode header .brand .mark{color:#b5583a;background:rgba(181,88,58,0.18);}
   body.student-mode header .who,
   body.student-mode header .today,
   body.student-mode #alertBell{display:none;}
@@ -50,7 +52,7 @@
   body.student-mode .logo-chip .brand-logo{height:20px;}
   body.student-mode header .signout{padding:5px 10px;font-size:11.5px;}
 
-  #studentGreeting{background:linear-gradient(135deg, var(--ink) 0%, #2d3766 100%);color:#fff;padding:22px 20px 20px;margin:0 0 18px;}
+  #studentGreeting{background:linear-gradient(135deg,#151b2c 0%,#1c2440 100%);border-bottom:2px solid var(--accent);color:#fff;padding:22px 20px 20px;margin:0 0 18px;}
   #studentGreeting .sg-name{font-size:19px;font-weight:800;margin-bottom:5px;}
   #studentGreeting .sg-sub{font-size:12.5px;color:#b9bfe0;font-family:var(--mono);}
 
@@ -88,8 +90,39 @@
   #guardianView nav.tabs button.active{background:var(--accent-soft);color:var(--accent);box-shadow:none;}
   #guardianChildSelectWrap select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:14px;font-family:var(--sans);background:var(--panel);color:var(--ink);margin:0 0 4px;}
 
-  /* 학부모 화면 전용 강조색 (학생 화면과 시각적으로 구분되는 테라코타 계열) */
-  #guardianView{ --accent:#b5583a; --accent-soft:#f6e6de; }
+  /* 학부모 화면 전용 톤 — 따뜻한 아이보리 배경 + 절제된 테라코타 (2026-07 디자인 리뉴얼) */
+  #guardianView{
+    --paper:#FAF7F2; --panel:#ffffff; --line:#E8E2D8;
+    --ink:#2B2A28; --ink-soft:#A39C8E;
+    --accent:#b5583a; --accent-soft:#F3E4D8;
+    --late:#916A2E; --late-soft:#F3EBD8;
+    --warn:#A3402E; --warn-soft:#F3E0DA;
+    background:var(--paper); min-height:100vh;
+  }
+  #guardianGreeting{padding:6px 2px 18px;}
+  #guardianGreeting .sg-name{font-size:19px;font-weight:800;color:var(--ink);margin-bottom:5px;}
+  #guardianGreeting .sg-sub{font-size:12.5px;color:var(--ink-soft);}
+
+  /* 학생 화면 전용 톤 — 짙은 네이비 배경 + 앰버 포인트 (2026-07 디자인 리뉴얼) */
+  #studentView{
+    --paper:#10151F; --panel:#171E2C; --line:#26304A;
+    --ink:#F1F0EA; --ink-soft:#8B93A8;
+    --accent:#EF9F27; --accent-soft:#2A2211;
+    --late:#BA7517; --late-soft:#2A2611;
+    --warn:#E2726B; --warn-soft:#2A1815;
+    background:var(--paper); min-height:100vh;
+  }
+  /* 밝은 앰버 배경 위 텍스트는 흰색 대신 짙은 색으로 (대비 확보) */
+  #studentView .btn-primary{color:#3a2708;}
+  #studentView .btn-primary:hover{background:#D98A1A;}
+  #guardianView .btn-primary:hover{background:#98442A;}
+  /* 학생 화면 입력창·파일첨부·통계카드 — 전역 스타일이 밝은 배경을 하드코딩하고 있어 다크 테마용으로 재정의 (구조는 동일) */
+  #studentView input,#studentView select,#studentView textarea,#studentView input[type="file"]{background:#1B2231;color:var(--ink);border-color:var(--line);}
+  #studentView input:focus,#studentView select:focus,#studentView textarea:focus{background:#20283B;}
+  #studentView input::placeholder,#studentView textarea::placeholder{color:#5B6479;}
+  #studentView .hw-file-item{background:#171E2C;border-color:var(--line);}
+  #studentView .stat-card{background:#171E2C;border-color:var(--line);}
+  #studentView .stat-card .value{color:var(--ink);}
 
   /* 학부모 첫 화면 상단 — 오늘 등하원 시각 카드 */
   .g-att-time-row{display:flex;gap:10px;}
@@ -255,13 +288,13 @@
   .stu-hw-card.urgent{border-left:5px solid var(--warn);background:var(--warn-soft);}
   .stu-hw-card.done{border-left:5px solid var(--accent);}
   .stu-hw-card.done[open]{background:var(--accent-soft);}
-  .stu-hw-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px;background:rgba(255,255,255,0.6);border-bottom:1px solid rgba(27,35,64,0.08);border-radius:12px 12px 0 0;}
+  .stu-hw-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.06);border-radius:12px 12px 0 0;}
   .stu-hw-card.done .stu-hw-summary{cursor:pointer;list-style:revert;}
   .stu-hw-card:not(.done) .stu-hw-summary{border-radius:11px 11px 0 0;}
   .stu-hw-title{font-weight:800;font-size:18px;letter-spacing:-0.3px;color:var(--ink);display:flex;align-items:center;gap:6px;}
   .stu-hw-status{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:700;white-space:nowrap;flex-shrink:0;}
-  .stu-hw-status.todo{background:#fff;color:var(--late);border:1.5px solid var(--late);}
-  .stu-hw-status.urgent{background:#fff;color:var(--warn);border:1.5px solid var(--warn);}
+  .stu-hw-status.todo{background:var(--panel);color:var(--late);border:1.5px solid var(--late);}
+  .stu-hw-status.urgent{background:var(--panel);color:var(--warn);border:1.5px solid var(--warn);}
   .stu-hw-status.done{background:var(--accent-soft);color:var(--accent);}
   .stu-hw-body{padding:0 16px 16px;}
   .stu-hw-card:not(.done) .stu-hw-body{padding-top:0;}
