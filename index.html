@@ -337,6 +337,13 @@
   .att-line-makeup{font-size:12.5px;color:var(--ink-soft);margin-left:auto;white-space:nowrap;}
   #detailModalOverlay{position:fixed;inset:0;background:rgba(27,35,64,0.55);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:40px 16px;overflow-y:auto;}
   #detailModalOverlay.open{display:flex;}
+  /* 학부모용 숙제 상세 모달 — #guardianView 안에 위치해 테라코타 색상 변수를 그대로 상속받음 */
+  #gHwDetailModalOverlay{position:fixed;inset:0;background:rgba(43,42,40,0.45);display:none;align-items:flex-start;justify-content:center;z-index:1000;padding:40px 16px;overflow-y:auto;}
+  #gHwDetailModalOverlay.open{display:flex;}
+  #gHwDetailModalBox{background:var(--panel);border-radius:16px;max-width:560px;width:100%;padding:26px;position:relative;margin-top:24px;}
+  #gHwDetailModalBox .closeBtn{position:absolute;top:16px;right:18px;background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);}
+  .g-hw-card{cursor:pointer;}
+  .g-hw-card:active{opacity:0.7;}
   #detailModalBox{background:var(--panel);border-radius:16px;max-width:760px;width:100%;padding:30px;position:relative;}
   #detailModalBox .closeBtn{position:absolute;top:18px;right:20px;background:transparent;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);}
   #detailModalBox h2{margin:0 0 2px;font-size:20px;}
@@ -859,6 +866,12 @@
     <button class="tab-btn" data-gtab="info"><span class="tab-icon">📊</span><span class="tab-label">출결·숙제</span></button>
     <button class="tab-btn" data-gtab="notice"><span class="tab-icon">📢</span><span class="tab-label">공지</span></button>
   </nav>
+  <div id="gHwDetailModalOverlay">
+    <div id="gHwDetailModalBox">
+      <button class="closeBtn" onclick="closeGuardianHwDetail()">✕</button>
+      <div id="gHwDetailModalContent"></div>
+    </div>
+  </div>
 </div>
 
 <footer>CHANCE MATH · 모든 데이터는 Supabase 클라우드 데이터베이스에 실시간으로 저장됩니다.</footer>
@@ -3223,7 +3236,7 @@ function renderGuardianInfo(){
   guardianAssignments.slice().sort((a,b)=> (b.due_date||'').localeCompare(a.due_date||'')).forEach(hw=>{
     const sub = guardianSubmissions.find(s=>s.assignment_id===hw.id);
     const submitted = sub && sub.submitted_at;
-    hwHtml += `<div class="hw-card" style="border:1px solid var(--line);border-left:4px solid ${submitted?'var(--accent)':'var(--line)'};border-radius:12px;padding:14px;margin-bottom:10px;">
+    hwHtml += `<div class="hw-card g-hw-card" style="border:1px solid var(--line);border-left:4px solid ${submitted?'var(--accent)':'var(--line)'};border-radius:12px;padding:14px;margin-bottom:10px;" onclick="openGuardianHwDetail('${hw.id}')">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <strong>${escapeHtml(hw.title)}</strong>
         <span class="badge ${submitted?'badge-present':'badge-late'}">${submitted?'✅ 제출완료':'미제출'}</span>
@@ -3234,6 +3247,41 @@ function renderGuardianInfo(){
   });
   hwWrap.innerHTML = hwHtml;
 }
+
+// 학부모용 숙제 상세 모달 — 읽기 전용(제출 기능 없음), 학생 화면의 내용 표시 방식을 재사용
+function openGuardianHwDetail(hwId){
+  const hw = guardianAssignments.find(a=>a.id===hwId);
+  if(!hw) return;
+  const sub = guardianSubmissions.find(s=>s.assignment_id===hwId);
+  const submitted = sub && sub.submitted_at;
+  const dd = ddayInfo(hw.due_date);
+
+  const html = `
+    <h2 style="margin:0 0 6px;font-size:19px;">${escapeHtml(hw.title)}</h2>
+    <p style="color:var(--ink-soft);font-size:13px;margin:0 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span>${fmtCreatedDateShort(hw.created_at) ? '출제 '+fmtCreatedDateShort(hw.created_at)+' · ' : ''}${hw.due_date ? '마감 '+fmtDateShort(hw.due_date) : '마감일 없음'}</span>
+      ${dd && !submitted ? `<span class="dday ${dd.cls}">${dd.text}</span>` : ''}
+      <span class="badge ${submitted?'badge-present':'badge-late'}">${submitted?'✅ 제출완료':'미제출'}</span>
+    </p>
+    ${hw.description ? `<p style="font-size:14px;margin:0 0 14px;color:var(--ink);white-space:pre-wrap;">${escapeHtml(hw.description)}</p>` : ''}
+    ${problemFiles(hw).length ? `<div style="margin:0 0 14px;">${problemFiles(hw).map(f=>`<button type="button" class="btn btn-ghost btn-sm" style="margin:2px;" onclick="viewSubmissionFile('${f.path}')">📎 ${escapeHtml(f.name||'문제파일')}</button>`).join('')}</div>` : ''}
+    ${submitted ? `
+      <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:4px;">
+        <p style="font-size:12.5px;font-weight:700;color:var(--ink-soft);margin:0 0 8px;">제출 내용</p>
+        ${sub.content ? `<p style="font-size:14px;margin:0 0 10px;color:var(--ink);white-space:pre-wrap;">${escapeHtml(sub.content)}</p>` : `<p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;">별도로 적은 내용은 없습니다.</p>`}
+        ${submissionFiles(sub).length ? `<div>${submissionFiles(sub).map((f,i)=>`<button type="button" class="btn btn-ghost btn-sm" style="margin:2px;" onclick="viewSubmissionFile('${f.path}')">📎 사진 ${i+1}</button>`).join('')}</div>` : ''}
+      </div>` : `<p style="font-size:13px;color:var(--ink-soft);margin:4px 0 0;">아직 제출하지 않은 숙제입니다.</p>`}
+    ${sub && sub.teacher_feedback ? `<div style="margin-top:14px;padding:12px;background:var(--accent-soft);border-radius:8px;font-size:13.5px;color:var(--accent);"><strong>선생님 피드백:</strong> ${escapeHtml(sub.teacher_feedback)}</div>` : ''}
+  `;
+  document.getElementById('gHwDetailModalContent').innerHTML = html;
+  document.getElementById('gHwDetailModalOverlay').classList.add('open');
+}
+function closeGuardianHwDetail(){
+  document.getElementById('gHwDetailModalOverlay').classList.remove('open');
+}
+document.getElementById('gHwDetailModalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id === 'gHwDetailModalOverlay') closeGuardianHwDetail();
+});
 
 let guardianAnnouncements = [];
 
