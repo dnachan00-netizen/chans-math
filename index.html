@@ -191,9 +191,7 @@
   .kiosk-result-text{font-size:22px;font-weight:800;color:var(--ink);}
   .kiosk-action-btn{padding:20px;font-size:18px;font-weight:800;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;font-family:var(--sans);transition:transform .08s;}
   .kiosk-action-btn:active{transform:scale(0.96);}
-  .kiosk-action-btn.pending{opacity:0.6;pointer-events:none;}
   .kiosk-action-btn.done{background:var(--accent);border-color:var(--accent);color:#3a2708;}
-  .kiosk-action-btn.just-done{transform:scale(1.05);}
 
   .staff-layout{display:flex;align-items:stretch;}
   .sidebar{width:220px;flex-shrink:0;background:var(--ink);min-height:calc(100vh - 68px);padding:22px 0;display:flex;flex-direction:column;gap:2px;}
@@ -218,15 +216,7 @@
     header h1{font-size:16px;}
     header .today{display:none;}
     header .who{font-size:11px;}
-    .kpi-wrap{padding:14px 16px 0;}
-    main{padding:16px 16px 40px;}
-    .panel{padding:16px;}
     .grid-form{grid-template-columns:1fr;}
-    .kpi-bar{grid-template-columns:1fr 1fr !important;gap:8px;}
-    .kpi-card{padding:12px 12px;}
-    .kpi-card .kpi-label{font-size:11px;gap:4px;}
-    .kpi-card .kpi-value{font-size:19px;}
-    .kpi-card .kpi-sub{font-size:10px;}
     #detailModalBox{padding:18px;max-width:100%;}
     #detailModalOverlay{padding:12px;}
     .home-class-grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));}
@@ -1104,12 +1094,6 @@ function ddayInfo(dueDateStr){
 
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function fmtDate(str){ if(!str) return '-'; const [y,m,d]=str.split('-'); return `${y}.${m}.${d}`; }
-// 숙제 출제일(assignments.created_at, timestamptz) → 한국 시간 기준 날짜만 뽑아서 fmtDate와 동일한 형식으로
-function fmtCreatedDate(iso){
-  if(!iso) return null;
-  const kstDateStr = new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-  return fmtDate(kstDateStr);
-}
 // 숙제 카드(출제일/마감일) 전용 — 연도 없이 월.일만 (항상 최근 날짜만 다루는 화면이라 연도가 불필요)
 function fmtDateShort(str){ if(!str) return '-'; const [,m,d] = str.split('-'); return `${m}.${d}`; }
 function fmtCreatedDateShort(iso){
