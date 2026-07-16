@@ -160,27 +160,37 @@
   .g-report-item .g-report-body{padding:0 16px 16px;white-space:pre-wrap;font-size:14px;line-height:1.6;}
 
   /* 여분 폰용 키오스크(등하원 체크인) 화면 — 로그인 없이 PIN으로만 접근 */
-  #kioskView{position:fixed;inset:0;background:var(--paper);z-index:998;display:none;overflow-y:auto;}
-  #kioskPinScreen{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;z-index:999;}
-  #kioskPinBox{background:var(--panel);padding:40px;border-radius:16px;width:100%;max-width:320px;text-align:center;}
+  #kioskView{
+    color-scheme:dark;
+    --paper:#10151F; --panel:#171E2C; --line:#26304A;
+    --ink:#F1F0EA; --ink-soft:#8B93A8;
+    --accent:#EF9F27; --accent-soft:#2A2211;
+    position:fixed;inset:0;background:var(--paper);z-index:998;display:none;overflow-y:auto;
+  }
+  #kioskPinScreen{position:fixed;inset:0;background:#0D1119;display:flex;align-items:center;justify-content:center;z-index:999;}
+  #kioskPinBox{background:var(--panel);padding:40px;border-radius:20px;width:100%;max-width:320px;text-align:center;border:1px solid var(--line);}
   #kioskPinBox .mark{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--accent);margin-bottom:14px;display:block;}
-  #kioskPinBox h1{font-size:17px;margin:0 0 18px;line-height:1.4;}
-  #kioskPinInput{width:100%;font-size:30px;text-align:center;letter-spacing:14px;padding:14px 10px;border-radius:10px;border:1px solid var(--line);font-family:var(--mono);}
-  #kioskPinMsg{color:var(--warn);font-size:13px;margin-top:10px;min-height:18px;}
+  #kioskPinBox h1{font-size:17px;margin:0 0 18px;line-height:1.4;color:var(--ink);}
+  #kioskPinInput{width:100%;font-size:30px;text-align:center;letter-spacing:14px;padding:14px 10px;border-radius:10px;border:1px solid var(--line);font-family:var(--mono);background:#0D1119;color:var(--ink);}
+  #kioskPinMsg{color:#E2726B;font-size:13px;margin-top:10px;min-height:18px;}
   #kioskPinBox button{width:100%;margin-top:18px;}
+  #kioskView .btn-primary{color:#3a2708;}
   #kioskMain{padding:20px;max-width:900px;margin:0 auto;}
   .kiosk-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
-  .kiosk-header h1{font-size:19px;margin:0;}
-  .kiosk-lock-btn{background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:var(--sans);}
+  .kiosk-header h1{font-size:21px;margin:0;color:var(--ink);}
+  .kiosk-lock-btn{background:transparent;border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:var(--sans);}
   #kioskClassButtons{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;}
-  .kiosk-class-btn{padding:14px 22px;font-size:16px;font-weight:700;border-radius:12px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-family:var(--sans);}
+  .kiosk-class-btn{padding:16px 24px;font-size:17px;font-weight:700;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--ink-soft);cursor:pointer;font-family:var(--sans);}
   .kiosk-class-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
-  #kioskStudentGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;}
-  .kiosk-student-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;}
-  .kiosk-student-name{font-size:19px;font-weight:800;margin-bottom:12px;}
-  .kiosk-student-actions{display:flex;flex-direction:column;gap:8px;}
-  .kiosk-action-btn{padding:16px;font-size:15px;font-weight:700;border-radius:10px;border:none;background:var(--ink);color:#fff;cursor:pointer;font-family:var(--sans);}
-  .kiosk-action-btn.done{background:var(--accent);color:#fff;}
+  #kioskStudentGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .kiosk-student-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;text-align:center;}
+  .kiosk-student-name{font-size:24px;font-weight:800;margin-bottom:14px;color:var(--ink);}
+  .kiosk-student-actions{display:flex;flex-direction:column;gap:10px;}
+  .kiosk-action-btn{padding:20px;font-size:18px;font-weight:800;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;font-family:var(--sans);transition:transform .08s;}
+  .kiosk-action-btn:active{transform:scale(0.96);}
+  .kiosk-action-btn.pending{opacity:0.6;pointer-events:none;}
+  .kiosk-action-btn.done{background:var(--accent);border-color:var(--accent);color:#3a2708;}
+  .kiosk-action-btn.just-done{transform:scale(1.05);}
 
   .staff-layout{display:flex;align-items:stretch;}
   .sidebar{width:220px;flex-shrink:0;background:var(--ink);min-height:calc(100vh - 68px);padding:22px 0;display:flex;flex-direction:column;gap:2px;}
@@ -3363,6 +3373,7 @@ async function loadKioskData(){
   document.getElementById('kioskMain').style.display = 'block';
   document.getElementById('kioskDateLabel').textContent = todayStr();
   renderKioskClassButtons();
+  if(typeof kioskNoteActivity === 'function') kioskNoteActivity();
   return true;
 }
 
@@ -3388,6 +3399,20 @@ function kioskLock(){
   document.getElementById('kioskPinScreen').style.display = 'flex';
   document.getElementById('kioskMain').style.display = 'none';
 }
+
+// 자동 잠금: 화면 조작이 없으면 5분 뒤 자동으로 PIN 화면으로 돌아가서
+// 학생 명단·출결 상태가 계속 노출된 채로 방치되지 않도록 함
+const KIOSK_AUTO_LOCK_MS = 5 * 60 * 1000;
+let kioskLastActivity = Date.now();
+function kioskNoteActivity(){ kioskLastActivity = Date.now(); }
+document.getElementById('kioskMain').addEventListener('click', kioskNoteActivity);
+document.getElementById('kioskMain').addEventListener('touchstart', kioskNoteActivity, { passive:true });
+setInterval(()=>{
+  const mainVisible = document.getElementById('kioskMain').style.display !== 'none';
+  if(mainVisible && Date.now() - kioskLastActivity > KIOSK_AUTO_LOCK_MS){
+    kioskLock();
+  }
+}, 30000);
 
 // 오늘 수업 있는 반(월목/화금/토일)의 세부 반 시간대만 버튼으로 노출
 // (수업 없는 요일이거나 보강수업 등으로 필요할 땐 "전체 반 보기" 토글로 전체 반 노출)
@@ -3443,17 +3468,20 @@ function renderKioskStudentGrid(){
       <div class="kiosk-student-card">
         <div class="kiosk-student-name">${escapeHtml(s.name)}</div>
         <div class="kiosk-student-actions">
-          <button class="kiosk-action-btn ${inDone?'done':''}" onclick="kioskCheckin('${s.id}','in')">${inDone ? `✅ 등원 ${fmtKioskTime(att.check_in_time)}` : '🚪 등원'}</button>
-          <button class="kiosk-action-btn ${outDone?'done':''}" onclick="kioskCheckin('${s.id}','out')">${outDone ? `✅ 하원 ${fmtKioskTime(att.check_out_time)}` : '🏠 하원'}</button>
+          <button class="kiosk-action-btn ${inDone?'done':''}" data-student="${s.id}" data-type="in" onclick="kioskCheckin('${s.id}','in',this)">${inDone ? `✅ 등원 ${fmtKioskTime(att.check_in_time)}` : '🚪 등원하기'}</button>
+          <button class="kiosk-action-btn ${outDone?'done':''}" data-student="${s.id}" data-type="out" onclick="kioskCheckin('${s.id}','out',this)">${outDone ? `✅ 하원 ${fmtKioskTime(att.check_out_time)}` : '🏠 하원하기'}</button>
         </div>
       </div>`;
   }).join('');
 }
 
-async function kioskCheckin(studentId, type){
+async function kioskCheckin(studentId, type, btnEl){
+  if(btnEl){ btnEl.classList.add('pending'); btnEl.textContent = '처리 중...'; }
+  kioskNoteActivity();
   const result = await kioskFetch('kiosk-checkin', { student_id: studentId, type });
   if(!result || !result.ok){
     alert('처리 실패: ' + ((result && result.message) || '알 수 없는 오류'));
+    renderKioskStudentGrid();
     return;
   }
   kioskAttendanceToday[studentId] = {
@@ -3461,6 +3489,11 @@ async function kioskCheckin(studentId, type){
     [type==='in' ? 'check_in_time' : 'check_out_time']: result.time
   };
   renderKioskStudentGrid();
+  const freshBtn = document.querySelector(`.kiosk-action-btn[data-student="${studentId}"][data-type="${type}"]`);
+  if(freshBtn){
+    freshBtn.classList.add('just-done');
+    setTimeout(()=>freshBtn.classList.remove('just-done'), 200);
+  }
 }
 
 // 홈 화면에 앱처럼 설치할 수 있도록 서비스워커 등록 (지원 안 하는 브라우저는 조용히 무시)
