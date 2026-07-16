@@ -2197,7 +2197,7 @@ async function renderClassLogStudentList(){
 // 또 다른 페이지 구간으로 취급 (예: "2.30-31,34-37" → 2번 교재의 30~31쪽과 34~37쪽 두 구간).
 function formatHwShorthand(raw){
   const parts = raw.split(/[,、，]/).map(p=>p.trim()).filter(Boolean);
-  if(!parts.length) return { title: raw, description: '' };
+  if(!parts.length) return { title: raw, description: '', books: [] };
 
   const books = []; // [{ num, ranges: [] }]
   let ok = true;
@@ -2215,14 +2215,32 @@ function formatHwShorthand(raw){
   if(ok && books.length){
     const bookText = b => `${b.num}번 교재 ${b.ranges.join(', ').replace(/-/g,'~')}쪽`;
     if(books.length === 1){
-      return { title: bookText(books[0]), description: '' };
+      return { title: bookText(books[0]), description: '', books };
     }
     return {
       title: `교재 숙제 (${books.length}건)`,
-      description: books.map(b=>`· ${bookText(b)}`).join('\n')
+      description: books.map(b=>`· ${bookText(b)}`).join('\n'),
+      books
     };
   }
-  return { title: raw, description: '' };
+  return { title: raw, description: '', books: [] };
+}
+
+// formatHwShorthand로 파싱된 교재 슬롯별 범위를 student_progress에 반영.
+// 지금 단계에서는 curriculum_map과 아직 연결하지 않고 last_completed_point만 기록함
+// (교재명 매핑·다음 구간 자동 채우기는 curriculum_map 데이터 입력 후 다음 단계에서 연결 예정).
+async function updateStudentProgressFromHomework(studentId, books){
+  if(!books || !books.length) return;
+  for(const b of books){
+    const slotNum = parseInt(b.num, 10);
+    if(!slotNum) continue;
+    const { error } = await sb.from('student_progress').upsert({
+      student_id: studentId,
+      slot_num: slotNum,
+      last_completed_point: b.ranges.join(', ')
+    }, { onConflict: 'student_id,slot_num' });
+    if(error) console.error('student_progress 갱신 실패:', error.message);
+  }
 }
 
 async function toggleQuickHomework(studentId){
@@ -2312,6 +2330,8 @@ async function saveQuickHomework(studentId){
     special_notes: existingLog ? existingLog.special_notes : ''
   }, { onConflict: 'student_id,note_date' });
   if(logErr){ alert('저장 실패: '+logErr.message); return; }
+
+  updateStudentProgressFromHomework(studentId, formatted.books);
 
   renderKpiBar();
   toggleQuickHomework(studentId);
