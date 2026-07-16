@@ -3,14 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>찬스수학 통합 학생 관리 프로그램</title>
+<title id="pageTitle">찬스수학 통합 학생 관리 프로그램</title>
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1b2340">
+<link rel="manifest" href="manifest.json" id="manifestLink">
+<meta name="theme-color" content="#1b2340" id="themeColorMeta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="찬스수학">
+<meta name="apple-mobile-web-app-title" content="찬스수학" id="appleTitleMeta">
+<script>
+  if (location.search.includes('kiosk=1')) {
+    document.getElementById('manifestLink').setAttribute('href', 'manifest-kiosk.json');
+    document.getElementById('pageTitle').textContent = '찬스수학 키오스크';
+    document.getElementById('appleTitleMeta').setAttribute('content', '찬스수학 키오스크');
+  }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
