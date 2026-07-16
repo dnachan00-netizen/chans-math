@@ -1792,31 +1792,60 @@ async function renderHomeStudentList(){
         <label>이해도</label>
         <select id="hsLogUnderstanding_${s.id}">
           <option value="">선택 안 함</option>
+          <option${log&&log.understanding==='오늘 배운 새로운 개념을 어려워해서 다음 시간에 한 번 더 짚어보기로 했어요'?' selected':''}>오늘 배운 새로운 개념을 어려워해서 다음 시간에 한 번 더 짚어보기로 했어요</option>
+          <option${log&&log.understanding==='전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요'?' selected':''}>전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요</option>
+          <option${log&&log.understanding==='비슷한 문제를 다시 풀어보니 처음보다는 헷갈려하는 부분이 줄었어요'?' selected':''}>비슷한 문제를 다시 풀어보니 처음보다는 헷갈려하는 부분이 줄었어요</option>
+          <option${log&&log.understanding==='처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요'?' selected':''}>처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요</option>
+          <option${log&&log.understanding==='계산 과정에서 실수가 있어서 검산하는 습관을 함께 연습했어요'?' selected':''}>계산 과정에서 실수가 있어서 검산하는 습관을 함께 연습했어요</option>
+          <option${log&&log.understanding==='문장으로 된 응용 문제를 식으로 옮기는 과정을 어려워했어요'?' selected':''}>문장으로 된 응용 문제를 식으로 옮기는 과정을 어려워했어요</option>
+          <option${log&&log.understanding==='공식은 외웠지만 왜 그런지 물으니 조금 헷갈려했어요'?' selected':''}>공식은 외웠지만 왜 그런지 물으니 조금 헷갈려했어요</option>
           <option${log&&log.understanding==='개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요'?' selected':''}>개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요</option>
           <option${log&&log.understanding==='기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요'?' selected':''}>기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요</option>
-          <option${log&&log.understanding==='처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요'?' selected':''}>처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요</option>
-          <option${log&&log.understanding==='전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요'?' selected':''}>전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요</option>
-          <option${log&&log.understanding==='다시 풀거나 설명하려니 조금 헷갈려했어요'?' selected':''}>다시 풀거나 설명하려니 조금 헷갈려했어요</option>
-          <option${log&&log.understanding==='오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요'?' selected':''}>오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요</option>
           <option${log&&log.understanding==='개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요'?' selected':''}>개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요</option>
-          <option${log&&log.understanding==='그래프와 도형을 같이 그려보며 시각적으로 완벽히 이해했어요'?' selected':''}>그래프와 도형을 같이 그려보며 시각적으로 완벽히 이해했어요</option>
+          <option${log&&log.understanding==='힌트를 주니 스스로 방향을 찾아서 잘 풀어냈어요'?' selected':''}>힌트를 주니 스스로 방향을 찾아서 잘 풀어냈어요</option>
+          <option${log&&log.understanding==='새로운 유형인데도 예시를 몇 번 보더니 금방 적응했어요'?' selected':''}>새로운 유형인데도 예시를 몇 번 보더니 금방 적응했어요</option>
+          <option${log&&log.understanding==='스스로 오답을 찾아내고 고치는 힘이 눈에 띄게 좋아졌어요'?' selected':''}>스스로 오답을 찾아내고 고치는 힘이 눈에 띄게 좋아졌어요</option>
+          <option${log&&log.understanding==='비슷한 유형을 반복하니 확실히 자기 것으로 만든 게 보였어요'?' selected':''}>비슷한 유형을 반복하니 확실히 자기 것으로 만든 게 보였어요</option>
+          <option${log&&log.understanding==='오늘 배운 내용을 이전 단원과 연결해서 이해하는 모습이 좋았어요'?' selected':''}>오늘 배운 내용을 이전 단원과 연결해서 이해하는 모습이 좋았어요</option>
           <option${log&&log.understanding==='오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요'?' selected':''}>오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요</option>
+          <option${log&&log.understanding==='시간이 부족해서 진도는 다 못 나갔지만, 푼 부분까지는 확실히 이해했어요'?' selected':''}>시간이 부족해서 진도는 다 못 나갔지만, 푼 부분까지는 확실히 이해했어요</option>
+          <option${log&&log.understanding==='오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요'?' selected':''}>오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요</option>
           <option${log&&log.understanding==='레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요'?' selected':''}>레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요</option>
         </select>
 
         <label>태도</label>
         <select id="hsLogAttitude_${s.id}">
           <option value="">선택 안 함</option>
-          <option${log&&log.attitude==='어려워했지만 끝까지 포기 안 하고 고민해서 풀어보려는 태도가 기특했어요'?' selected':''}>어려워했지만 끝까지 포기 안 하고 고민해서 풀어보려는 태도가 기특했어요</option>
+          <optgroup label="집중·컨디션 관련">
+          <option${log&&log.attitude==='문제를 끝까지 읽지 않고 서두르는 경향이 있어 천천히 읽는 연습을 했어요'?' selected':''}>문제를 끝까지 읽지 않고 서두르는 경향이 있어 천천히 읽는 연습을 했어요</option>
+          <option${log&&log.attitude==='오늘따라 산만해 보여서 짧게 쉬는 시간을 가진 뒤 다시 집중했어요'?' selected':''}>오늘따라 산만해 보여서 짧게 쉬는 시간을 가진 뒤 다시 집중했어요</option>
           <option${log&&log.attitude==='조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요'?' selected':''}>조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요</option>
-          <option${log&&log.attitude==='아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요'?' selected':''}>아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요</option>
-          <option${log&&log.attitude==='숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요'?' selected':''}>숙제 양이 많았는데도 꼬박꼬박 열심히 해오려고 노력했어요</option>
-          <option${log&&log.attitude==='모르는 것을 부끄러워하지 않고 적극적으로 질문했어요'?' selected':''}>모르는 것을 부끄러워하지 않고 적극적으로 질문했어요</option>
-          <option${log&&log.attitude==='오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요'?' selected':''}>오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요</option>
           <option${log&&log.attitude==='어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요'?' selected':''}>어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요</option>
+          <option${log&&log.attitude==='평소보다 말수가 적고 기운이 없어 보여 가볍게 안부를 물었어요'?' selected':''}>평소보다 말수가 적고 기운이 없어 보여 가볍게 안부를 물었어요</option>
           <option${log&&log.attitude==='시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요'?' selected':''}>시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요</option>
-          <option${log&&log.attitude==='문제를 재미있어하면서 적극적으로 참여했어요'?' selected':''}>문제를 재미있어하면서 적극적으로 참여했어요</option>
+          <option${log&&log.attitude==='시험을 앞두고 긴장한 기색이 보였지만 차분하게 잘 이겨냈어요'?' selected':''}>시험을 앞두고 긴장한 기색이 보였지만 차분하게 잘 이겨냈어요</option>
+          <option${log&&log.attitude==='오늘따라 컨디션이 좋아 보였는지 집중력이 유독 좋았어요'?' selected':''}>오늘따라 컨디션이 좋아 보였는지 집중력이 유독 좋았어요</option>
+          </optgroup>
+          <optgroup label="자신감·정서 관련">
+          <option${log&&log.attitude==='아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요'?' selected':''}>아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요</option>
+          <option${log&&log.attitude==='다른 친구와 비교하며 조급해하길래 사람마다 배우는 속도가 다르다고 다독여줬어요'?' selected':''}>다른 친구와 비교하며 조급해하길래 사람마다 배우는 속도가 다르다고 다독여줬어요</option>
           <option${log&&log.attitude==='칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요'?' selected':''}>칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요</option>
+          <option${log&&log.attitude==='실수해도 스스로 웃어넘기며 다시 도전하는 여유가 생겼어요'?' selected':''}>실수해도 스스로 웃어넘기며 다시 도전하는 여유가 생겼어요</option>
+          <option${log&&log.attitude==='자기 실수를 인정하고 바로 고치려는 자세가 성숙해 보였어요'?' selected':''}>자기 실수를 인정하고 바로 고치려는 자세가 성숙해 보였어요</option>
+          </optgroup>
+          <optgroup label="적극성·태도 관련">
+          <option${log&&log.attitude==='오늘은 질문을 주저하며 다소 소극적인 모습을 보였어요'?' selected':''}>오늘은 질문을 주저하며 다소 소극적인 모습을 보였어요</option>
+          <option${log&&log.attitude==='숙제나 예습을 자꾸 미루는 모습이 보여 학습 습관을 함께 점검했어요'?' selected':''}>숙제나 예습을 자꾸 미루는 모습이 보여 학습 습관을 함께 점검했어요</option>
+          <option${log&&log.attitude==='시키는 것만 하려는 소극적인 태도가 보여 스스로 해보도록 격려했어요'?' selected':''}>시키는 것만 하려는 소극적인 태도가 보여 스스로 해보도록 격려했어요</option>
+          <option${log&&log.attitude==='모르는 것을 부끄러워하지 않고 적극적으로 질문했어요'?' selected':''}>모르는 것을 부끄러워하지 않고 적극적으로 질문했어요</option>
+          <option${log&&log.attitude==='어려운 문제도 먼저 혼자 시도해보려는 태도가 좋았어요'?' selected':''}>어려운 문제도 먼저 혼자 시도해보려는 태도가 좋았어요</option>
+          <option${log&&log.attitude==='어려워했지만 끝까지 포기하지 않고 고민해서 풀어보려는 태도가 기특했어요'?' selected':''}>어려워했지만 끝까지 포기하지 않고 고민해서 풀어보려는 태도가 기특했어요</option>
+          <option${log&&log.attitude==='숙제 양이 많았는데도 꼬박꼬박 열심히 해왔어요'?' selected':''}>숙제 양이 많았는데도 꼬박꼬박 열심히 해왔어요</option>
+          <option${log&&log.attitude==='노트 정리를 꼼꼼히 해와서 복습하는 습관이 잘 자리 잡힌 게 보였어요'?' selected':''}>노트 정리를 꼼꼼히 해와서 복습하는 습관이 잘 자리 잡힌 게 보였어요</option>
+          <option${log&&log.attitude==='오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요'?' selected':''}>오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요</option>
+          <option${log&&log.attitude==='문제를 재미있어하면서 적극적으로 참여했어요'?' selected':''}>문제를 재미있어하면서 적극적으로 참여했어요</option>
+          <option${log&&log.attitude==='오늘은 표정이 밝고 대답도 씩씩하게 잘했어요'?' selected':''}>오늘은 표정이 밝고 대답도 씩씩하게 잘했어요</option>
+          </optgroup>
         </select>
 
         <label>다음 시간 계획</label>
@@ -1833,6 +1862,16 @@ async function renderHomeStudentList(){
           <option${log&&log.closing_mood==='감사합니다! 주말 잘 보내세요!'?' selected':''}>감사합니다! 주말 잘 보내세요!</option>
           <option${log&&log.closing_mood==='감사합니다! 활기찬 한 주 보내세요!'?' selected':''}>감사합니다! 활기찬 한 주 보내세요!</option>
           <option${log&&log.closing_mood==='감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!'?' selected':''}>감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!</option>
+          <option${log&&log.closing_mood==='감사합니다.'?' selected':''}>감사합니다.</option>
+          <option${log&&log.closing_mood==='감사합니다! 오늘도 애쓴 우리 학생, 칭찬 많이 해주세요! 👏'?' selected':''}>감사합니다! 오늘도 애쓴 우리 학생, 칭찬 많이 해주세요! 👏</option>
+          <option${log&&log.closing_mood==='감사합니다! 저녁 맛있게 드시고 푹 쉬세요! 😊'?' selected':''}>감사합니다! 저녁 맛있게 드시고 푹 쉬세요! 😊</option>
+          <option${log&&log.closing_mood==='감사합니다! 날이 많이 더운데 건강 잘 챙기세요! ☀️'?' selected':''}>감사합니다! 날이 많이 더운데 건강 잘 챙기세요! ☀️</option>
+          <option${log&&log.closing_mood==='감사합니다! 환절기에 감기 조심하세요! 🤧'?' selected':''}>감사합니다! 환절기에 감기 조심하세요! 🤧</option>
+          <option${log&&log.closing_mood==='감사합니다! 이번 주도 무사히 잘 넘겼네요, 다음 주에 뵐게요! 🙌'?' selected':''}>감사합니다! 이번 주도 무사히 잘 넘겼네요, 다음 주에 뵐게요! 🙌</option>
+          <option${log&&log.closing_mood==='감사합니다! 오늘 정말 열심히 했어요, 집에서도 칭찬 한마디 부탁드려요! 💪'?' selected':''}>감사합니다! 오늘 정말 열심히 했어요, 집에서도 칭찬 한마디 부탁드려요! 💪</option>
+          <option${log&&log.closing_mood==='감사합니다! 시험 끝나고 다 같이 홀가분하게 웃어요! 😊'?' selected':''}>감사합니다! 시험 끝나고 다 같이 홀가분하게 웃어요! 😊</option>
+          <option${log&&log.closing_mood==='감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨'?' selected':''}>감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨</option>
+          <option${log&&log.closing_mood==='감사합니다! 좋은 하루 보내세요! 😊'?' selected':''}>감사합니다! 좋은 하루 보내세요! 😊</option>
         </select>
 
         <div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(s.id)}</div>
