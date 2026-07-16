@@ -277,6 +277,17 @@
   .kpi-card.warn .kpi-label, .kpi-card.warn .kpi-sub{color:rgba(255,255,255,0.75);}
   .kpi-card.accent{background:var(--accent);}
   .kpi-card.accent .kpi-label, .kpi-card.accent .kpi-sub{color:rgba(255,255,255,0.75);}
+  /* 위쪽 main/.panel/.kpi-wrap 등의 기본 규칙이 소스 순서상 더 뒤에 있어서, 앞서 정의한 모바일(max-width:600px) 패딩 축소가 실제로는 적용되지 않던 문제 수정 — 같은 내용을 기본 규칙 이후에 다시 선언 */
+  @media (max-width:600px){
+    main{padding:16px 16px 40px;}
+    .panel{padding:16px;}
+    .kpi-wrap{padding:14px 16px 0;}
+    .kpi-bar{grid-template-columns:1fr 1fr !important;gap:8px;}
+    .kpi-card{padding:12px 12px;}
+    .kpi-card .kpi-label{font-size:11px;gap:4px;}
+    .kpi-card .kpi-value{font-size:19px;}
+    .kpi-card .kpi-sub{font-size:10px;}
+  }
   .hw-file-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .hw-file-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
   .hw-file-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fcfcfb;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;}
