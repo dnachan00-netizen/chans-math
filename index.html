@@ -175,17 +175,20 @@
   #kioskPinMsg{color:#E2726B;font-size:13px;margin-top:10px;min-height:18px;}
   #kioskPinBox button{width:100%;margin-top:18px;}
   #kioskView .btn-primary{color:#3a2708;}
-  #kioskMain{padding:20px;max-width:900px;margin:0 auto;}
-  .kiosk-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+  #kioskMain{padding:20px;max-width:480px;margin:0 auto;}
+  .kiosk-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
   .kiosk-header h1{font-size:21px;margin:0;color:var(--ink);}
   .kiosk-lock-btn{background:transparent;border:1px solid var(--line);color:var(--ink-soft);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:var(--sans);}
-  #kioskClassButtons{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;}
-  .kiosk-class-btn{padding:16px 24px;font-size:17px;font-weight:700;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--ink-soft);cursor:pointer;font-family:var(--sans);}
-  .kiosk-class-btn.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
-  #kioskStudentGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
-  .kiosk-student-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;text-align:center;}
-  .kiosk-student-name{font-size:24px;font-weight:800;margin-bottom:14px;color:var(--ink);}
-  .kiosk-student-actions{display:flex;flex-direction:column;gap:10px;}
+  .kiosk-keypad-label{font-size:19px;font-weight:700;color:var(--ink);text-align:center;margin:10px 0 18px;}
+  .kiosk-digits-display{font-family:var(--mono);font-size:38px;letter-spacing:14px;text-align:center;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 10px;max-width:320px;margin:0 auto 12px;}
+  .kiosk-keypad-msg{color:#E2726B;font-size:14px;text-align:center;min-height:20px;margin-bottom:6px;}
+  .kiosk-keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:320px;margin:0 auto;}
+  .kiosk-keypad-btn{padding:22px;font-size:26px;font-weight:800;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-family:var(--mono);transition:transform .08s;}
+  .kiosk-keypad-btn:active{transform:scale(0.94);}
+  .kiosk-keypad-btn.wide{font-size:15px;font-weight:700;color:var(--ink-soft);font-family:var(--sans);}
+  .kiosk-candidate-grid{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+  .kiosk-candidate-btn{padding:24px 30px;font-size:24px;font-weight:800;border-radius:16px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-family:var(--sans);}
+  .kiosk-result-text{font-size:22px;font-weight:800;color:var(--ink);}
   .kiosk-action-btn{padding:20px;font-size:18px;font-weight:800;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink-soft);cursor:pointer;font-family:var(--sans);transition:transform .08s;}
   .kiosk-action-btn:active{transform:scale(0.96);}
   .kiosk-action-btn.pending{opacity:0.6;pointer-events:none;}
@@ -460,13 +463,34 @@
   <div id="kioskMain" style="display:none;">
     <div class="kiosk-header">
       <h1>📋 등하원 체크 — <span id="kioskDateLabel"></span></h1>
-      <div style="display:flex;gap:8px;">
-        <button class="kiosk-lock-btn" onclick="loadKioskData()">🔄 새로고침</button>
-        <button class="kiosk-lock-btn" onclick="kioskLock()">🔒 잠금</button>
+      <button class="kiosk-lock-btn" onclick="kioskLock()">🔒 잠금</button>
+    </div>
+
+    <div id="kioskKeypadScreen">
+      <p class="kiosk-keypad-label">보호자 번호 뒤 4자리를 입력하세요</p>
+      <div id="kioskDigitsDisplay" class="kiosk-digits-display">_ _ _ _</div>
+      <div id="kioskKeypadMsg" class="kiosk-keypad-msg"></div>
+      <div id="kioskKeypadGrid" class="kiosk-keypad-grid"></div>
+    </div>
+
+    <div id="kioskCandidateScreen" style="display:none;text-align:center;">
+      <p class="kiosk-keypad-label">본인 이름을 골라주세요</p>
+      <div id="kioskCandidateGrid" class="kiosk-candidate-grid"></div>
+      <button class="kiosk-lock-btn" onclick="kioskResetKeypad()" style="margin-top:16px;">취소</button>
+    </div>
+
+    <div id="kioskConfirmScreen" style="display:none;text-align:center;">
+      <p id="kioskConfirmText" class="kiosk-keypad-label"></p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:10px;">
+        <button class="kiosk-action-btn done" style="max-width:170px;" onclick="kioskConfirmCheckout(true)">네, 하원할게요</button>
+        <button class="kiosk-action-btn" style="max-width:120px;" onclick="kioskConfirmCheckout(false)">아니요</button>
       </div>
     </div>
-    <div id="kioskClassButtons"></div>
-    <div id="kioskStudentGrid"></div>
+
+    <div id="kioskResultScreen" style="display:none;text-align:center;">
+      <div id="kioskResultIcon" style="font-size:56px;margin-bottom:10px;"></div>
+      <p id="kioskResultText" class="kiosk-result-text"></p>
+    </div>
   </div>
 </div>
 
@@ -3314,10 +3338,8 @@ function renderGuardianNoticeBanner(){
 ========================================================= */
 
 const KIOSK_SECRET_KEY = 'chansMathKioskSecret';
-let kioskStudents = [];
-let kioskAttendanceToday = {}; // student_id -> {check_in_time, check_out_time}
-let kioskSelectedClass = null;
-let kioskShowAllClasses = false; // 수업 없는 요일에도 테스트/보강수업 대응할 수 있도록
+let kioskDigits = '';
+let kioskPendingStudentId = null; // ambiguous 후보 선택 또는 confirm_checkout 시 사용
 
 function isKioskMode(){
   return new URLSearchParams(location.search).get('kiosk') === '1';
@@ -3327,10 +3349,11 @@ async function initKiosk(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appRoot').style.display = 'none';
   document.getElementById('kioskView').style.display = 'block';
+  renderKioskKeypad();
 
   const savedSecret = localStorage.getItem(KIOSK_SECRET_KEY);
   if(savedSecret){
-    const ok = await loadKioskData();
+    const ok = await kioskVerifyPin();
     if(ok) return;
     localStorage.removeItem(KIOSK_SECRET_KEY); // 저장된 PIN이 더는 안 맞으면 초기화
   }
@@ -3363,17 +3386,14 @@ async function kioskFetch(fnName, body){
   return json || { ok:true };
 }
 
-async function loadKioskData(){
+// PIN만 확인 (학생 명단은 더 이상 통째로 안 불러옴 — 키패드 방식이라 필요 없음)
+async function kioskVerifyPin(){
   const result = await kioskFetch('kiosk-students', {});
   if(!result || !result.ok) return false;
-  kioskStudents = result.students || [];
-  kioskAttendanceToday = {};
-  (result.attendance || []).forEach(a=>{ kioskAttendanceToday[a.student_id] = a; });
   document.getElementById('kioskPinScreen').style.display = 'none';
   document.getElementById('kioskMain').style.display = 'block';
   document.getElementById('kioskDateLabel').textContent = todayStr();
-  renderKioskClassButtons();
-  if(typeof kioskNoteActivity === 'function') kioskNoteActivity();
+  kioskResetKeypad();
   return true;
 }
 
@@ -3382,7 +3402,7 @@ async function kioskTryPin(){
   if(!pin){ return; }
   localStorage.setItem(KIOSK_SECRET_KEY, pin);
   document.getElementById('kioskPinMsg').textContent = '확인 중...';
-  const ok = await loadKioskData();
+  const ok = await kioskVerifyPin();
   if(!ok){
     localStorage.removeItem(KIOSK_SECRET_KEY);
     document.getElementById('kioskPinMsg').textContent = 'PIN이 올바르지 않습니다. 다시 확인해 주세요.';
@@ -3400,100 +3420,123 @@ function kioskLock(){
   document.getElementById('kioskMain').style.display = 'none';
 }
 
-// 자동 잠금: 화면 조작이 없으면 5분 뒤 자동으로 PIN 화면으로 돌아가서
-// 학생 명단·출결 상태가 계속 노출된 채로 방치되지 않도록 함
-const KIOSK_AUTO_LOCK_MS = 5 * 60 * 1000;
-let kioskLastActivity = Date.now();
-function kioskNoteActivity(){ kioskLastActivity = Date.now(); }
-document.getElementById('kioskMain').addEventListener('click', kioskNoteActivity);
-document.getElementById('kioskMain').addEventListener('touchstart', kioskNoteActivity, { passive:true });
-setInterval(()=>{
-  const mainVisible = document.getElementById('kioskMain').style.display !== 'none';
-  if(mainVisible && Date.now() - kioskLastActivity > KIOSK_AUTO_LOCK_MS){
-    kioskLock();
-  }
-}, 30000);
-
-// 오늘 수업 있는 반(월목/화금/토일)의 세부 반 시간대만 버튼으로 노출
-// (수업 없는 요일이거나 보강수업 등으로 필요할 땐 "전체 반 보기" 토글로 전체 반 노출)
-function renderKioskClassButtons(){
-  const wrap = document.getElementById('kioskClassButtons');
-  const group = todayClassGroup();
-  const base = kioskShowAllClasses
-    ? kioskStudents
-    : kioskStudents.filter(s=> group && s.class_time && s.class_time.startsWith(group));
-  const classTimes = [...new Set(base.map(s=>s.class_time).filter(Boolean))].sort();
-
-  const toggleBtn = `<button class="kiosk-lock-btn" onclick="toggleKioskShowAll()" style="margin-bottom:12px;">${kioskShowAllClasses ? '📌 오늘 수업 반만 보기' : '📚 전체 반 보기'}</button>`;
-
-  if(classTimes.length===0){
-    wrap.innerHTML = toggleBtn + `<div class="empty">${kioskShowAllClasses ? '등록된 반이 없습니다.' : `오늘(${todayKoreanWeekday()}요일)은 예정된 수업이 없습니다. 위 버튼으로 전체 반을 볼 수 있어요.`}</div>`;
-    document.getElementById('kioskStudentGrid').innerHTML = '';
-    return;
-  }
-  if(!kioskSelectedClass || !classTimes.includes(kioskSelectedClass)) kioskSelectedClass = classTimes[0];
-
-  wrap.innerHTML = toggleBtn + '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + classTimes.map(ct=>
-    `<button class="kiosk-class-btn ${ct===kioskSelectedClass?'active':''}" onclick="selectKioskClass('${ct}')">${escapeHtml(ct)}</button>`
-  ).join('') + '</div>';
-  renderKioskStudentGrid();
-}
-
-function toggleKioskShowAll(){
-  kioskShowAllClasses = !kioskShowAllClasses;
-  kioskSelectedClass = null;
-  renderKioskClassButtons();
-}
-
-function selectKioskClass(ct){
-  kioskSelectedClass = ct;
-  renderKioskClassButtons();
-}
-
 function fmtKioskTime(iso){
   if(!iso) return '';
   return new Date(iso).toLocaleTimeString('ko-KR', { hour:'numeric', minute:'2-digit' });
 }
 
-function renderKioskStudentGrid(){
-  const wrap = document.getElementById('kioskStudentGrid');
-  const list = kioskStudents.filter(s=>s.class_time === kioskSelectedClass);
-  if(list.length===0){ wrap.innerHTML = `<div class="empty">이 반에 학생이 없습니다.</div>`; return; }
-
-  wrap.innerHTML = list.map(s=>{
-    const att = kioskAttendanceToday[s.id] || {};
-    const inDone = !!att.check_in_time;
-    const outDone = !!att.check_out_time;
-    return `
-      <div class="kiosk-student-card">
-        <div class="kiosk-student-name">${escapeHtml(s.name)}</div>
-        <div class="kiosk-student-actions">
-          <button class="kiosk-action-btn ${inDone?'done':''}" data-student="${s.id}" data-type="in" onclick="kioskCheckin('${s.id}','in',this)">${inDone ? `✅ 등원 ${fmtKioskTime(att.check_in_time)}` : '🚪 등원하기'}</button>
-          <button class="kiosk-action-btn ${outDone?'done':''}" data-student="${s.id}" data-type="out" onclick="kioskCheckin('${s.id}','out',this)">${outDone ? `✅ 하원 ${fmtKioskTime(att.check_out_time)}` : '🏠 하원하기'}</button>
-        </div>
-      </div>`;
+function renderKioskKeypad(){
+  const grid = document.getElementById('kioskKeypadGrid');
+  const keys = ['1','2','3','4','5','6','7','8','9','clear','0','back'];
+  grid.innerHTML = keys.map(k=>{
+    if(k==='clear') return `<button class="kiosk-keypad-btn wide" onclick="kioskKeypadClear()">전체지우기</button>`;
+    if(k==='back') return `<button class="kiosk-keypad-btn wide" onclick="kioskKeypadBackspace()">⌫</button>`;
+    return `<button class="kiosk-keypad-btn" onclick="kioskKeypadPress('${k}')">${k}</button>`;
   }).join('');
 }
 
-async function kioskCheckin(studentId, type, btnEl){
-  if(btnEl){ btnEl.classList.add('pending'); btnEl.textContent = '처리 중...'; }
-  kioskNoteActivity();
-  const result = await kioskFetch('kiosk-checkin', { student_id: studentId, type });
+function kioskUpdateDigitsDisplay(){
+  const shown = kioskDigits.padEnd(4,'_').split('').join(' ');
+  document.getElementById('kioskDigitsDisplay').textContent = shown;
+}
+
+function kioskKeypadPress(d){
+  if(kioskDigits.length>=4) return;
+  kioskDigits += d;
+  kioskUpdateDigitsDisplay();
+  document.getElementById('kioskKeypadMsg').textContent = '';
+  if(kioskDigits.length===4) kioskSubmitPhone();
+}
+
+function kioskKeypadBackspace(){
+  kioskDigits = kioskDigits.slice(0,-1);
+  kioskUpdateDigitsDisplay();
+}
+
+function kioskKeypadClear(){
+  kioskDigits = '';
+  kioskUpdateDigitsDisplay();
+  document.getElementById('kioskKeypadMsg').textContent = '';
+}
+
+function kioskShowScreen(name){
+  ['kioskKeypadScreen','kioskCandidateScreen','kioskConfirmScreen','kioskResultScreen'].forEach(id=>{
+    document.getElementById(id).style.display = (id===name) ? 'block' : 'none';
+  });
+}
+
+function kioskResetKeypad(){
+  kioskDigits = '';
+  kioskPendingStudentId = null;
+  kioskUpdateDigitsDisplay();
+  document.getElementById('kioskKeypadMsg').textContent = '';
+  kioskShowScreen('kioskKeypadScreen');
+}
+
+async function kioskSubmitPhone(){
+  document.getElementById('kioskKeypadMsg').textContent = '확인 중...';
+  const result = await kioskFetch('kiosk-checkin', { phone_last4: kioskDigits });
+  kioskHandleResult(result);
+}
+
+function kioskHandleResult(result){
   if(!result || !result.ok){
-    alert('처리 실패: ' + ((result && result.message) || '알 수 없는 오류'));
-    renderKioskStudentGrid();
+    document.getElementById('kioskKeypadMsg').textContent = (result && result.message) || '처리 중 오류가 발생했어요. 다시 시도해 주세요.';
+    kioskDigits = ''; kioskUpdateDigitsDisplay();
     return;
   }
-  kioskAttendanceToday[studentId] = {
-    ...(kioskAttendanceToday[studentId]||{}),
-    [type==='in' ? 'check_in_time' : 'check_out_time']: result.time
-  };
-  renderKioskStudentGrid();
-  const freshBtn = document.querySelector(`.kiosk-action-btn[data-student="${studentId}"][data-type="${type}"]`);
-  if(freshBtn){
-    freshBtn.classList.add('just-done');
-    setTimeout(()=>freshBtn.classList.remove('just-done'), 200);
+  switch(result.status){
+    case 'not_found':
+      document.getElementById('kioskKeypadMsg').textContent = '일치하는 번호를 찾지 못했어요. 선생님께 문의해 주세요.';
+      kioskDigits = ''; kioskUpdateDigitsDisplay();
+      break;
+    case 'ambiguous':
+      kioskRenderCandidates(result.candidates);
+      kioskShowScreen('kioskCandidateScreen');
+      break;
+    case 'confirm_checkout':
+      kioskPendingStudentId = result.student_id;
+      document.getElementById('kioskConfirmText').textContent = `${result.name}님, 방금 등원했는데 하원 처리할까요?`;
+      kioskShowScreen('kioskConfirmScreen');
+      break;
+    case 'checked_in':
+      kioskShowResult('🚪', `${result.name}님, 등원 완료! (${fmtKioskTime(result.time)})`);
+      break;
+    case 'checked_out':
+      kioskShowResult('🏠', `${result.name}님, 하원 완료! (${fmtKioskTime(result.time)})`);
+      break;
+    case 'already_done':
+      kioskShowResult('✅', `${result.name}님, 오늘 등하원을 모두 마쳤어요!`);
+      break;
+    default:
+      kioskResetKeypad();
   }
+}
+
+function kioskRenderCandidates(candidates){
+  const grid = document.getElementById('kioskCandidateGrid');
+  grid.innerHTML = candidates.map(c=>
+    `<button class="kiosk-candidate-btn" onclick="kioskPickCandidate('${c.id}')">${escapeHtml(c.label)}</button>`
+  ).join('');
+}
+
+async function kioskPickCandidate(studentId){
+  document.getElementById('kioskKeypadMsg').textContent = '';
+  const result = await kioskFetch('kiosk-checkin', { student_id: studentId });
+  kioskHandleResult(result);
+}
+
+async function kioskConfirmCheckout(yes){
+  if(!yes){ kioskResetKeypad(); return; }
+  const result = await kioskFetch('kiosk-checkin', { student_id: kioskPendingStudentId, force: true });
+  kioskHandleResult(result);
+}
+
+function kioskShowResult(icon, text){
+  document.getElementById('kioskResultIcon').textContent = icon;
+  document.getElementById('kioskResultText').textContent = text;
+  kioskShowScreen('kioskResultScreen');
+  setTimeout(kioskResetKeypad, 2200);
 }
 
 // 홈 화면에 앱처럼 설치할 수 있도록 서비스워커 등록 (지원 안 하는 브라우저는 조용히 무시)
