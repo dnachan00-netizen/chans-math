@@ -511,12 +511,13 @@
 <nav class="sidebar">
   <div class="sidebar-title">MENU</div>
   <button class="tab-btn active" data-tab="home"><span class="num">00</span>홈</button>
-  <button class="tab-btn" data-tab="homework"><span class="num">01</span>숙제 관리</button>
-  <button class="tab-btn" data-tab="counseling"><span class="num">02</span>상담 일지</button>
-  <button class="tab-btn" data-tab="scores"><span class="num">03</span>성적 관리</button>
-  <button class="tab-btn" data-tab="announcements"><span class="num">04</span>공지사항</button>
-  <button class="tab-btn" data-tab="attendance"><span class="num">05</span>출결 관리</button>
-  <button class="tab-btn" data-tab="students"><span class="num">06</span>학생 명단</button>
+  <button class="tab-btn" data-tab="classlog"><span class="num">01</span>수업일지</button>
+  <button class="tab-btn" data-tab="homework"><span class="num">02</span>숙제 관리</button>
+  <button class="tab-btn" data-tab="counseling"><span class="num">03</span>상담 일지</button>
+  <button class="tab-btn" data-tab="scores"><span class="num">04</span>성적 관리</button>
+  <button class="tab-btn" data-tab="announcements"><span class="num">05</span>공지사항</button>
+  <button class="tab-btn" data-tab="attendance"><span class="num">06</span>출결 관리</button>
+  <button class="tab-btn" data-tab="students"><span class="num">07</span>학생 명단</button>
 </nav>
 
 <div class="content-area">
@@ -531,6 +532,25 @@
     </div>
     <div class="panel" id="homeClassStudentsPanel" style="display:none;">
       <div id="homeClassStudents"></div>
+    </div>
+  </section>
+
+  <section id="tab-classlog" class="tab-panel" style="display:none;">
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+        <h2 style="margin:0;">수업일지</h2>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="shiftClassLogDate(-1)">‹ 이전</button>
+          <input type="date" id="classLogDateInput" onchange="onClassLogDateChange()" style="max-width:150px;">
+          <button class="btn btn-ghost btn-sm" onclick="shiftClassLogDate(1)">다음 ›</button>
+          <button class="btn btn-ghost btn-sm" id="classLogTodayBtn" onclick="setClassLogDateToday()">오늘</button>
+        </div>
+      </div>
+      <p class="desc">날짜와 반을 고르면, 그날 그 반 학생들의 수업일지를 바로 조회·수정할 수 있습니다. 홈 화면에서 작성한 내용과 동일한 기록을 씁니다.</p>
+      <div id="classLogClassButtons"></div>
+    </div>
+    <div class="panel" id="classLogStudentsPanel" style="display:none;">
+      <div id="classLogStudents"></div>
     </div>
   </section>
 
@@ -1269,6 +1289,7 @@ document.querySelectorAll('#staffView .tab-btn').forEach(btn=>{
     if(btn.dataset.tab==='homework') renderHwList();
     if(btn.dataset.tab==='counseling') renderCounselingTab();
     if(btn.dataset.tab==='home') renderHomeTab();
+    if(btn.dataset.tab==='classlog') renderClassLogTab();
     if(btn.dataset.tab==='announcements') renderAnnouncementsTab();
   });
 });
@@ -1732,6 +1753,135 @@ document.getElementById('attFilterStudent').addEventListener('change', renderAtt
 let homeSelectedClass = null;
 let homeShowAllClasses = false;
 
+// ===== 수업일지 탭 전용 상태 =====
+let classLogSelectedClass = null;
+let classLogSelectedDate = null; // renderClassLogTab에서 todayStr()로 초기화
+
+// ===== 수업일지 입력폼 공용 옵션 목록 (홈 화면 인라인 입력 / 수업일지 탭에서 공유) =====
+const CLASSLOG_UNDERSTANDING_OPTIONS = [
+  '오늘 배운 새로운 개념을 어려워해서 다음 시간에 한 번 더 짚어보기로 했어요',
+  '전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요',
+  '비슷한 문제를 다시 풀어보니 처음보다는 헷갈려하는 부분이 줄었어요',
+  '처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요',
+  '계산 과정에서 실수가 있어서 검산하는 습관을 함께 연습했어요',
+  '문장으로 된 응용 문제를 식으로 옮기는 과정을 어려워했어요',
+  '공식은 외웠지만 왜 그런지 물으니 조금 헷갈려했어요',
+  '개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요',
+  '기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요',
+  '개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요',
+  '힌트를 주니 스스로 방향을 찾아서 잘 풀어냈어요',
+  '새로운 유형인데도 예시를 몇 번 보더니 금방 적응했어요',
+  '스스로 오답을 찾아내고 고치는 힘이 눈에 띄게 좋아졌어요',
+  '비슷한 유형을 반복하니 확실히 자기 것으로 만든 게 보였어요',
+  '오늘 배운 내용을 이전 단원과 연결해서 이해하는 모습이 좋았어요',
+  '오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요',
+  '시간이 부족해서 진도는 다 못 나갔지만, 푼 부분까지는 확실히 이해했어요',
+  '오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요',
+  '레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요'
+];
+const CLASSLOG_ATTITUDE_GROUPS = [
+  { label:'집중·컨디션 관련', options:[
+    '문제를 끝까지 읽지 않고 서두르는 경향이 있어 천천히 읽는 연습을 했어요',
+    '오늘따라 산만해 보여서 짧게 쉬는 시간을 가진 뒤 다시 집중했어요',
+    '조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요',
+    '어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요',
+    '평소보다 말수가 적고 기운이 없어 보여 가볍게 안부를 물었어요',
+    '시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요',
+    '시험을 앞두고 긴장한 기색이 보였지만 차분하게 잘 이겨냈어요',
+    '오늘따라 컨디션이 좋아 보였는지 집중력이 유독 좋았어요'
+  ]},
+  { label:'자신감·정서 관련', options:[
+    '아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요',
+    '다른 친구와 비교하며 조급해하길래 사람마다 배우는 속도가 다르다고 다독여줬어요',
+    '칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요',
+    '실수해도 스스로 웃어넘기며 다시 도전하는 여유가 생겼어요',
+    '자기 실수를 인정하고 바로 고치려는 자세가 성숙해 보였어요'
+  ]},
+  { label:'적극성·태도 관련', options:[
+    '오늘은 질문을 주저하며 다소 소극적인 모습을 보였어요',
+    '숙제나 예습을 자꾸 미루는 모습이 보여 학습 습관을 함께 점검했어요',
+    '시키는 것만 하려는 소극적인 태도가 보여 스스로 해보도록 격려했어요',
+    '모르는 것을 부끄러워하지 않고 적극적으로 질문했어요',
+    '어려운 문제도 먼저 혼자 시도해보려는 태도가 좋았어요',
+    '어려워했지만 끝까지 포기하지 않고 고민해서 풀어보려는 태도가 기특했어요',
+    '숙제 양이 많았는데도 꼬박꼬박 열심히 해왔어요',
+    '노트 정리를 꼼꼼히 해와서 복습하는 습관이 잘 자리 잡힌 게 보였어요',
+    '오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요',
+    '문제를 재미있어하면서 적극적으로 참여했어요',
+    '오늘은 표정이 밝고 대답도 씩씩하게 잘했어요'
+  ]}
+];
+const CLASSLOG_CLOSING_OPTIONS = [
+  '감사합니다!',
+  '감사합니다! 평안한 밤 보내세요!',
+  '감사합니다! 오늘 하루도 고생 많으셨어요!',
+  '감사합니다! 주말 잘 보내세요!',
+  '감사합니다! 활기찬 한 주 보내세요!',
+  '감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!',
+  '감사합니다.',
+  '감사합니다! 오늘도 애쓴 우리 학생, 칭찬 많이 해주세요! 👏',
+  '감사합니다! 저녁 맛있게 드시고 푹 쉬세요! 😊',
+  '감사합니다! 날이 많이 더운데 건강 잘 챙기세요! ☀️',
+  '감사합니다! 환절기에 감기 조심하세요! 🤧',
+  '감사합니다! 이번 주도 무사히 잘 넘겼네요, 다음 주에 뵐게요! 🙌',
+  '감사합니다! 오늘 정말 열심히 했어요, 집에서도 칭찬 한마디 부탁드려요! 💪',
+  '감사합니다! 시험 끝나고 다 같이 홀가분하게 웃어요! 😊',
+  '감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨',
+  '감사합니다! 좋은 하루 보내세요! 😊'
+];
+function classLogUnderstandingOptionsHtml(current){
+  return `<option value="">선택 안 함</option>` +
+    CLASSLOG_UNDERSTANDING_OPTIONS.map(o=>`<option${current===o?' selected':''}>${o}</option>`).join('');
+}
+function classLogAttitudeOptionsHtml(current){
+  return `<option value="">선택 안 함</option>` +
+    CLASSLOG_ATTITUDE_GROUPS.map(g=>`<optgroup label="${g.label}">` +
+      g.options.map(o=>`<option${current===o?' selected':''}>${o}</option>`).join('') +
+    `</optgroup>`).join('');
+}
+function classLogClosingOptionsHtml(current){
+  return CLASSLOG_CLOSING_OPTIONS.map((o,i)=>`<option${(current ? current===o : i===0)?' selected':''}>${o}</option>`).join('');
+}
+function classLogHwStateButtonsHtml(current){
+  return ['완료','일부','미완료','없음'].map(v=>
+    `<button type="button" data-val="${v}" onclick="selectHwState(this)" class="${(current ? current===v : v==='완료')?'active':''}">${v}</button>`
+  ).join('');
+}
+
+// 수업일지 입력폼 본문(수업내용~마무리인사) — 홈 화면의 학생별 인라인 입력과 수업일지 탭에서 공용으로 사용.
+// prefix로 DOM id 네임스페이스를 분리해서(hs=홈, cl=수업일지 탭) 두 화면이 동시에 렌더링돼도 id가 겹치지 않게 함.
+function classLogEditorHtml(studentId, prefix, log, dateStr){
+  const isToday = dateStr === todayStr();
+  return `
+    <label>수업 내용</label>
+    <textarea id="${prefix}LogContent_${studentId}" rows="2" placeholder="오늘 진도, 다룬 내용을 적어주세요.">${log && log.lesson_content ? escapeHtml(log.lesson_content) : ''}</textarea>
+
+    <label>숙제 수행</label>
+    <div class="segmented4" id="${prefix}LogHwState_${studentId}">${classLogHwStateButtonsHtml(log && log.homework_status)}</div>
+
+    <label>이해도</label>
+    <select id="${prefix}LogUnderstanding_${studentId}">${classLogUnderstandingOptionsHtml(log && log.understanding)}</select>
+
+    <label>태도</label>
+    <select id="${prefix}LogAttitude_${studentId}">${classLogAttitudeOptionsHtml(log && log.attitude)}</select>
+
+    <label>다음 시간 계획</label>
+    <input type="text" id="${prefix}LogNextPlan_${studentId}" placeholder="예: 지수함수, 로그함수 복습하고 이어서 진도" value="${log&&log.next_plan?escapeHtml(log.next_plan):''}">
+
+    <label>오늘 메모 (특이사항)</label>
+    <textarea id="${prefix}LogNotes_${studentId}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
+
+    <label>마무리 인사</label>
+    <select id="${prefix}LogClosing_${studentId}">${classLogClosingOptionsHtml(log && log.closing_mood)}</select>
+
+    ${isToday ? `<div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(studentId)}</div>` : ''}
+    <div class="cl-report-preview" id="${prefix}LogPreview_${studentId}"></div>
+    <div class="hs-log-actions">
+      <button class="btn btn-primary btn-sm" onclick="saveClassLogGeneric('${studentId}','${prefix}','${dateStr}')">저장 + 미리보기</button>
+      <button class="btn btn-ghost btn-sm" onclick="toggleClassLogEditor('${studentId}','${prefix}')">취소</button>
+    </div>`;
+}
+
 function todayKoreanWeekday(){ return ['일','월','화','수','목','금','토'][new Date().getDay()]; }
 
 function renderHomeTab(){
@@ -1834,7 +1984,7 @@ async function renderHomeStudentList(){
         <button class="att-quick-btn ${attStatus==='결석'?'active absent':''}" onclick="quickSetAttendance('${s.id}','결석')">결석</button>
         <span class="hs-actions">
           <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">숙제</button>
-          <button class="btn btn-ghost btn-sm" onclick="toggleClassLogInline('${s.id}')">수업일지</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleClassLogEditor('${s.id}','hs')">수업일지</button>
           <button class="btn btn-ghost btn-sm" onclick="goToCounselingFor('${s.id}')">상담일지</button>
         </span>
       </div>
@@ -1852,114 +2002,140 @@ async function renderHomeStudentList(){
         <button class="btn btn-ghost btn-sm" onclick="toggleQuickHomework('${s.id}')">취소</button>
       </div>
       <div class="hs-quick-log" id="hsQuickLog_${s.id}" style="display:none;">
-        <label>수업 내용</label>
-        <textarea id="hsLogContent_${s.id}" rows="2" placeholder="오늘 진도, 다룬 내용을 적어주세요.">${log && log.lesson_content ? escapeHtml(log.lesson_content) : ''}</textarea>
-
-        <label>숙제 수행</label>
-        <div class="segmented4" id="hsLogHwState_${s.id}">
-          <button type="button" data-val="완료" onclick="selectHwState('${s.id}',this)" class="${(!log||!log.homework_status||log.homework_status==='완료')?'active':''}">완료</button>
-          <button type="button" data-val="일부" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='일부'?'active':''}">일부</button>
-          <button type="button" data-val="미완료" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='미완료'?'active':''}">미완료</button>
-          <button type="button" data-val="없음" onclick="selectHwState('${s.id}',this)" class="${log&&log.homework_status==='없음'?'active':''}">없음</button>
-        </div>
-
-        <label>이해도</label>
-        <select id="hsLogUnderstanding_${s.id}">
-          <option value="">선택 안 함</option>
-          <option${log&&log.understanding==='오늘 배운 새로운 개념을 어려워해서 다음 시간에 한 번 더 짚어보기로 했어요'?' selected':''}>오늘 배운 새로운 개념을 어려워해서 다음 시간에 한 번 더 짚어보기로 했어요</option>
-          <option${log&&log.understanding==='전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요'?' selected':''}>전에 배운 내용을 잊어버려서 개념부터 차근차근 다시 정리했어요</option>
-          <option${log&&log.understanding==='비슷한 문제를 다시 풀어보니 처음보다는 헷갈려하는 부분이 줄었어요'?' selected':''}>비슷한 문제를 다시 풀어보니 처음보다는 헷갈려하는 부분이 줄었어요</option>
-          <option${log&&log.understanding==='처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요'?' selected':''}>처음 배우는 내용이라 헷갈려했지만 풀면서 잘 이해해가고 있어요</option>
-          <option${log&&log.understanding==='계산 과정에서 실수가 있어서 검산하는 습관을 함께 연습했어요'?' selected':''}>계산 과정에서 실수가 있어서 검산하는 습관을 함께 연습했어요</option>
-          <option${log&&log.understanding==='문장으로 된 응용 문제를 식으로 옮기는 과정을 어려워했어요'?' selected':''}>문장으로 된 응용 문제를 식으로 옮기는 과정을 어려워했어요</option>
-          <option${log&&log.understanding==='공식은 외웠지만 왜 그런지 물으니 조금 헷갈려했어요'?' selected':''}>공식은 외웠지만 왜 그런지 물으니 조금 헷갈려했어요</option>
-          <option${log&&log.understanding==='개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요'?' selected':''}>개념은 잘 이해했는데, 응용 문제는 조금 어려워했어요</option>
-          <option${log&&log.understanding==='기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요'?' selected':''}>기본 개념은 잘 잡혀있는데, 심화 문제는 아직 어려워해요</option>
-          <option${log&&log.understanding==='개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요'?' selected':''}>개념은 아는데 식을 깔끔하게 전개하는 과정을 조금 헷갈려해요</option>
-          <option${log&&log.understanding==='힌트를 주니 스스로 방향을 찾아서 잘 풀어냈어요'?' selected':''}>힌트를 주니 스스로 방향을 찾아서 잘 풀어냈어요</option>
-          <option${log&&log.understanding==='새로운 유형인데도 예시를 몇 번 보더니 금방 적응했어요'?' selected':''}>새로운 유형인데도 예시를 몇 번 보더니 금방 적응했어요</option>
-          <option${log&&log.understanding==='스스로 오답을 찾아내고 고치는 힘이 눈에 띄게 좋아졌어요'?' selected':''}>스스로 오답을 찾아내고 고치는 힘이 눈에 띄게 좋아졌어요</option>
-          <option${log&&log.understanding==='비슷한 유형을 반복하니 확실히 자기 것으로 만든 게 보였어요'?' selected':''}>비슷한 유형을 반복하니 확실히 자기 것으로 만든 게 보였어요</option>
-          <option${log&&log.understanding==='오늘 배운 내용을 이전 단원과 연결해서 이해하는 모습이 좋았어요'?' selected':''}>오늘 배운 내용을 이전 단원과 연결해서 이해하는 모습이 좋았어요</option>
-          <option${log&&log.understanding==='오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요'?' selected':''}>오답 노트를 꼼꼼히 한 덕분에 비슷한 유형은 이제 스스로 잘 풀어요</option>
-          <option${log&&log.understanding==='시간이 부족해서 진도는 다 못 나갔지만, 푼 부분까지는 확실히 이해했어요'?' selected':''}>시간이 부족해서 진도는 다 못 나갔지만, 푼 부분까지는 확실히 이해했어요</option>
-          <option${log&&log.understanding==='오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요'?' selected':''}>오늘 배운 내용을 스스로 설명할 수 있을 만큼 잘 이해했어요</option>
-          <option${log&&log.understanding==='레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요'?' selected':''}>레벨이 높은 어려운 문제인데도 중간 과정까지 아주 잘 풀었어요</option>
-        </select>
-
-        <label>태도</label>
-        <select id="hsLogAttitude_${s.id}">
-          <option value="">선택 안 함</option>
-          <optgroup label="집중·컨디션 관련">
-          <option${log&&log.attitude==='문제를 끝까지 읽지 않고 서두르는 경향이 있어 천천히 읽는 연습을 했어요'?' selected':''}>문제를 끝까지 읽지 않고 서두르는 경향이 있어 천천히 읽는 연습을 했어요</option>
-          <option${log&&log.attitude==='오늘따라 산만해 보여서 짧게 쉬는 시간을 가진 뒤 다시 집중했어요'?' selected':''}>오늘따라 산만해 보여서 짧게 쉬는 시간을 가진 뒤 다시 집중했어요</option>
-          <option${log&&log.attitude==='조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요'?' selected':''}>조금 피곤해 보였지만 끝까지 집중해서 잘 따라왔어요</option>
-          <option${log&&log.attitude==='어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요'?' selected':''}>어젯밤 늦게까지 공부하느라 졸려 했지만 끝까지 잘 따라왔어요</option>
-          <option${log&&log.attitude==='평소보다 말수가 적고 기운이 없어 보여 가볍게 안부를 물었어요'?' selected':''}>평소보다 말수가 적고 기운이 없어 보여 가볍게 안부를 물었어요</option>
-          <option${log&&log.attitude==='시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요'?' selected':''}>시험이 다가와서 지쳐 보였지만 잘 버텨내고 있어요</option>
-          <option${log&&log.attitude==='시험을 앞두고 긴장한 기색이 보였지만 차분하게 잘 이겨냈어요'?' selected':''}>시험을 앞두고 긴장한 기색이 보였지만 차분하게 잘 이겨냈어요</option>
-          <option${log&&log.attitude==='오늘따라 컨디션이 좋아 보였는지 집중력이 유독 좋았어요'?' selected':''}>오늘따라 컨디션이 좋아 보였는지 집중력이 유독 좋았어요</option>
-          </optgroup>
-          <optgroup label="자신감·정서 관련">
-          <option${log&&log.attitude==='아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요'?' selected':''}>아직 확신이 없어 보여서 칭찬으로 자신감을 심어주었어요</option>
-          <option${log&&log.attitude==='다른 친구와 비교하며 조급해하길래 사람마다 배우는 속도가 다르다고 다독여줬어요'?' selected':''}>다른 친구와 비교하며 조급해하길래 사람마다 배우는 속도가 다르다고 다독여줬어요</option>
-          <option${log&&log.attitude==='칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요'?' selected':''}>칭찬 한마디에 자신감을 얻어 더 적극적으로 풀어봤어요</option>
-          <option${log&&log.attitude==='실수해도 스스로 웃어넘기며 다시 도전하는 여유가 생겼어요'?' selected':''}>실수해도 스스로 웃어넘기며 다시 도전하는 여유가 생겼어요</option>
-          <option${log&&log.attitude==='자기 실수를 인정하고 바로 고치려는 자세가 성숙해 보였어요'?' selected':''}>자기 실수를 인정하고 바로 고치려는 자세가 성숙해 보였어요</option>
-          </optgroup>
-          <optgroup label="적극성·태도 관련">
-          <option${log&&log.attitude==='오늘은 질문을 주저하며 다소 소극적인 모습을 보였어요'?' selected':''}>오늘은 질문을 주저하며 다소 소극적인 모습을 보였어요</option>
-          <option${log&&log.attitude==='숙제나 예습을 자꾸 미루는 모습이 보여 학습 습관을 함께 점검했어요'?' selected':''}>숙제나 예습을 자꾸 미루는 모습이 보여 학습 습관을 함께 점검했어요</option>
-          <option${log&&log.attitude==='시키는 것만 하려는 소극적인 태도가 보여 스스로 해보도록 격려했어요'?' selected':''}>시키는 것만 하려는 소극적인 태도가 보여 스스로 해보도록 격려했어요</option>
-          <option${log&&log.attitude==='모르는 것을 부끄러워하지 않고 적극적으로 질문했어요'?' selected':''}>모르는 것을 부끄러워하지 않고 적극적으로 질문했어요</option>
-          <option${log&&log.attitude==='어려운 문제도 먼저 혼자 시도해보려는 태도가 좋았어요'?' selected':''}>어려운 문제도 먼저 혼자 시도해보려는 태도가 좋았어요</option>
-          <option${log&&log.attitude==='어려워했지만 끝까지 포기하지 않고 고민해서 풀어보려는 태도가 기특했어요'?' selected':''}>어려워했지만 끝까지 포기하지 않고 고민해서 풀어보려는 태도가 기특했어요</option>
-          <option${log&&log.attitude==='숙제 양이 많았는데도 꼬박꼬박 열심히 해왔어요'?' selected':''}>숙제 양이 많았는데도 꼬박꼬박 열심히 해왔어요</option>
-          <option${log&&log.attitude==='노트 정리를 꼼꼼히 해와서 복습하는 습관이 잘 자리 잡힌 게 보였어요'?' selected':''}>노트 정리를 꼼꼼히 해와서 복습하는 습관이 잘 자리 잡힌 게 보였어요</option>
-          <option${log&&log.attitude==='오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요'?' selected':''}>오늘은 유독 집중력이 좋아서 진도를 수월하게 나갔어요</option>
-          <option${log&&log.attitude==='문제를 재미있어하면서 적극적으로 참여했어요'?' selected':''}>문제를 재미있어하면서 적극적으로 참여했어요</option>
-          <option${log&&log.attitude==='오늘은 표정이 밝고 대답도 씩씩하게 잘했어요'?' selected':''}>오늘은 표정이 밝고 대답도 씩씩하게 잘했어요</option>
-          </optgroup>
-        </select>
-
-        <label>다음 시간 계획</label>
-        <input type="text" id="hsLogNextPlan_${s.id}" placeholder="예: 지수함수, 로그함수 복습하고 이어서 진도" value="${log&&log.next_plan?escapeHtml(log.next_plan):''}">
-
-        <label>오늘 메모 (특이사항)</label>
-        <textarea id="hsLogNotes_${s.id}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
-
-        <label>마무리 인사</label>
-        <select id="hsLogClosing_${s.id}">
-          <option${!log||!log.closing_mood||log.closing_mood==='감사합니다!'?' selected':''}>감사합니다!</option>
-          <option${log&&log.closing_mood==='감사합니다! 평안한 밤 보내세요!'?' selected':''}>감사합니다! 평안한 밤 보내세요!</option>
-          <option${log&&log.closing_mood==='감사합니다! 오늘 하루도 고생 많으셨어요!'?' selected':''}>감사합니다! 오늘 하루도 고생 많으셨어요!</option>
-          <option${log&&log.closing_mood==='감사합니다! 주말 잘 보내세요!'?' selected':''}>감사합니다! 주말 잘 보내세요!</option>
-          <option${log&&log.closing_mood==='감사합니다! 활기찬 한 주 보내세요!'?' selected':''}>감사합니다! 활기찬 한 주 보내세요!</option>
-          <option${log&&log.closing_mood==='감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!'?' selected':''}>감사합니다! 시험까지 조금만 더 힘낼 수 있도록 많이 다독여주세요!</option>
-          <option${log&&log.closing_mood==='감사합니다.'?' selected':''}>감사합니다.</option>
-          <option${log&&log.closing_mood==='감사합니다! 오늘도 애쓴 우리 학생, 칭찬 많이 해주세요! 👏'?' selected':''}>감사합니다! 오늘도 애쓴 우리 학생, 칭찬 많이 해주세요! 👏</option>
-          <option${log&&log.closing_mood==='감사합니다! 저녁 맛있게 드시고 푹 쉬세요! 😊'?' selected':''}>감사합니다! 저녁 맛있게 드시고 푹 쉬세요! 😊</option>
-          <option${log&&log.closing_mood==='감사합니다! 날이 많이 더운데 건강 잘 챙기세요! ☀️'?' selected':''}>감사합니다! 날이 많이 더운데 건강 잘 챙기세요! ☀️</option>
-          <option${log&&log.closing_mood==='감사합니다! 환절기에 감기 조심하세요! 🤧'?' selected':''}>감사합니다! 환절기에 감기 조심하세요! 🤧</option>
-          <option${log&&log.closing_mood==='감사합니다! 이번 주도 무사히 잘 넘겼네요, 다음 주에 뵐게요! 🙌'?' selected':''}>감사합니다! 이번 주도 무사히 잘 넘겼네요, 다음 주에 뵐게요! 🙌</option>
-          <option${log&&log.closing_mood==='감사합니다! 오늘 정말 열심히 했어요, 집에서도 칭찬 한마디 부탁드려요! 💪'?' selected':''}>감사합니다! 오늘 정말 열심히 했어요, 집에서도 칭찬 한마디 부탁드려요! 💪</option>
-          <option${log&&log.closing_mood==='감사합니다! 시험 끝나고 다 같이 홀가분하게 웃어요! 😊'?' selected':''}>감사합니다! 시험 끝나고 다 같이 홀가분하게 웃어요! 😊</option>
-          <option${log&&log.closing_mood==='감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨'?' selected':''}>감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨</option>
-          <option${log&&log.closing_mood==='감사합니다! 좋은 하루 보내세요! 😊'?' selected':''}>감사합니다! 좋은 하루 보내세요! 😊</option>
-        </select>
-
-        <div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(s.id)}</div>
-        <div class="cl-report-preview" id="hsLogPreview_${s.id}"></div>
-        <div class="hs-log-actions">
-          <button class="btn btn-primary btn-sm" onclick="saveQuickClassLog('${s.id}')">저장 + 미리보기</button>
-          <button class="btn btn-ghost btn-sm" onclick="toggleClassLogInline('${s.id}')">취소</button>
-        </div>
+        ${classLogEditorHtml(s.id, 'hs', log, todayStr())}
       </div>
     </div>`;
   });
   html += `</div>`;
   wrap.innerHTML = html;
 }
+
+/* =========================================================
+   수업일지 탭 — 홈 화면과 같은 class_logs 테이블을 사용하되,
+   날짜를 자유롭게 선택해서 지난 수업일지도 조회·수정할 수 있게 함.
+========================================================= */
+
+function renderClassLogTab(){
+  if(!classLogSelectedDate) classLogSelectedDate = todayStr();
+  document.getElementById('classLogDateInput').value = classLogSelectedDate;
+  updateClassLogTodayBtnState();
+  renderClassLogClassButtons();
+  if(classLogSelectedClass !== null) renderClassLogStudentList();
+  else document.getElementById('classLogStudentsPanel').style.display = 'none';
+}
+
+function updateClassLogTodayBtnState(){
+  const btn = document.getElementById('classLogTodayBtn');
+  if(!btn) return;
+  const isToday = classLogSelectedDate === todayStr();
+  btn.classList.toggle('btn-primary', isToday);
+  btn.disabled = isToday;
+}
+
+function shiftClassLogDate(delta){
+  const d = new Date(classLogSelectedDate + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  classLogSelectedDate = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  renderClassLogTab();
+}
+
+function onClassLogDateChange(){
+  const val = document.getElementById('classLogDateInput').value;
+  if(!val) return;
+  classLogSelectedDate = val;
+  renderClassLogTab();
+}
+
+function setClassLogDateToday(){
+  classLogSelectedDate = todayStr();
+  renderClassLogTab();
+}
+
+async function selectClassLogClass(classTime){
+  classLogSelectedClass = classTime;
+  renderClassLogClassButtons();
+  await renderClassLogStudentList();
+}
+
+// 홈 화면의 renderHomeClassButtons()와 같은 구조를 그대로 사용하되, 상태 변수/핸들러만 수업일지 탭 전용으로 분리
+function renderClassLogClassButtons(){
+  const wrap = document.getElementById('classLogClassButtons');
+  const todayGroup = todayClassGroup();
+  const groups = {'월목':[], '화금':[], '토일':[]};
+  CLASS_LIST.forEach(ct=>{
+    const prefix = ct.split(' ')[0];
+    const count = students.filter(s=>s.class_time===ct && isActiveStudent(s)).length;
+    groups[prefix].push({ct, count});
+  });
+
+  const renderGroupButtons = (list) => list.map(g=>`
+    <button class="home-class-btn${classLogSelectedClass===g.ct?' selected':''}" onclick="selectClassLogClass('${g.ct}')">
+      <span class="hc-time">${g.ct.split(' ')[1]}</span>
+      <span class="hc-count">${g.count}명</span>
+    </button>`).join('');
+
+  let html = `<div class="home-class-grid">`;
+  Object.keys(groups).forEach(prefix=>{
+    html += renderGroupButtons(groups[prefix]);
+  });
+  html += `</div>`;
+
+  const unassigned = students.filter(s=>!s.class_time && isActiveStudent(s));
+  if(unassigned.length){
+    html += `<div class="home-group-label">반 미배정</div><div class="home-class-grid">
+      <button class="home-class-btn${classLogSelectedClass===''?' selected':''}" onclick="selectClassLogClass('')">
+        <span class="hc-time">미배정</span><span class="hc-count">${unassigned.length}명</span>
+      </button>
+    </div>`;
+  }
+
+  wrap.innerHTML = html;
+}
+
+async function renderClassLogStudentList(){
+  const classTime = classLogSelectedClass;
+  const dateStr = classLogSelectedDate;
+  const list = classTime ? students.filter(s=>s.class_time===classTime && isActiveStudent(s)) : students.filter(s=>!s.class_time && isActiveStudent(s));
+  const panel = document.getElementById('classLogStudentsPanel');
+  const wrap = document.getElementById('classLogStudents');
+  panel.style.display = 'block';
+  if(list.length===0){ wrap.innerHTML = `<div class="empty">이 반에 등록된 학생이 없습니다.</div>`; return; }
+
+  const { data, error } = list.length ? await sb.from('class_logs').select('*')
+    .eq('note_date', dateStr).in('student_id', list.map(s=>s.id)) : { data: [] };
+  const logMap = {};
+  if(!error && data) data.forEach(row=>{ logMap[row.student_id] = row; });
+
+  const isToday = dateStr === todayStr();
+  const lessonLabel = isToday ? '오늘 수업' : '수업 내용';
+  const hwLabel = isToday ? '오늘 과제' : '그날 과제';
+
+  let html = `<h2 style="margin:0 0 16px;">${classTime || '반 미배정'} <span style="color:var(--ink-soft);font-weight:400;font-size:14px;">(${list.length}명) · ${fmtDate(dateStr)}</span></h2><div class="home-student-list">`;
+  list.forEach(s=>{
+    const log = logMap[s.id];
+    html += `<div class="home-student-row" id="clRow_${s.id}">
+      <div class="hs-row-top">
+        <span class="hs-name" onclick="openStudentDetail('${s.id}')" title="상세보기">${escapeHtml(s.name)}</span>
+        <span class="hs-meta">${escapeHtml(s.grade)||''} · ${escapeHtml(s.school)||'학교 미입력'}</span>
+      </div>
+      <div class="hs-att-row">
+        <span class="hs-actions" style="margin-left:auto;">
+          <button class="btn btn-ghost btn-sm" onclick="toggleClassLogEditor('${s.id}','cl')">${log && log.lesson_content ? '수업일지 수정' : '수업일지 작성'}</button>
+        </span>
+      </div>
+      <div class="hs-log-preview" id="clPreview_${s.id}">
+        <span class="hs-log-item"><strong>${lessonLabel}</strong> ${log && log.lesson_content ? escapeHtml(log.lesson_content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
+        <span class="hs-log-item"><strong>${hwLabel}</strong> ${log && log.today_homework ? escapeHtml(log.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>
+      </div>
+      <div class="hs-quick-log" id="clQuickLog_${s.id}" style="display:none;">
+        ${classLogEditorHtml(s.id, 'cl', log, dateStr)}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
 
 // "2.26-29" 나 "1.34-36,2.5-8" 처럼 원장님이 빠르게 입력하는 축약형을
 // 학생이 보기에 명확한 제목/내용으로 자동 변환. 패턴에 안 맞으면 원문 그대로 둠.
@@ -2106,8 +2282,8 @@ async function quickSetAttendance(studentId, status){
   }
 }
 
-function selectHwState(studentId, btn){
-  const group = document.getElementById('hsLogHwState_'+studentId);
+function selectHwState(btn){
+  const group = btn.parentElement;
   group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -2148,37 +2324,44 @@ function composeClassReport(studentName, { lessonContent, hwState, understanding
 }
 
 // 수업일지(수업 내용/숙제수행/이해도/태도/다음계획/특이사항)를 그 자리에서 펼쳐서 바로 입력
-function toggleClassLogInline(studentId){
-  const box = document.getElementById('hsQuickLog_'+studentId);
-  const hwBox = document.getElementById('hsQuickHw_'+studentId);
-  if(hwBox) hwBox.style.display = 'none'; // 숙제 입력창은 닫아줌
+// prefix: 'hs'=홈 화면 인라인, 'cl'=수업일지 탭 — 같은 학생이라도 화면마다 별도 DOM id를 쓰므로 동시에 열려있어도 안전함
+function toggleClassLogEditor(studentId, prefix){
+  const box = document.getElementById(prefix+'QuickLog_'+studentId);
+  if(!box) return;
+  if(prefix==='hs'){
+    const hwBox = document.getElementById('hsQuickHw_'+studentId);
+    if(hwBox) hwBox.style.display = 'none'; // 홈 화면에서는 숙제 입력창은 닫아줌
+  }
   const isOpen = box.style.display !== 'none';
   box.style.display = isOpen ? 'none' : 'flex';
   if(!isOpen){
-    document.getElementById('hsLogContent_'+studentId).focus();
+    document.getElementById(prefix+'LogContent_'+studentId).focus();
   }
 }
 
-async function saveQuickClassLog(studentId){
+// 수업일지 저장 — 홈 화면(오늘 날짜 고정)과 수업일지 탭(날짜 선택 가능) 양쪽에서 공용으로 사용.
+// 같은 class_logs 테이블에 student_id+note_date 기준으로 upsert하므로 두 화면 중 어디서 작성하든 항상 같은 기록으로 동기화됨.
+async function saveClassLogGeneric(studentId, prefix, dateStr){
   const s = findStudent(studentId); if(!s) return;
-  const content = document.getElementById('hsLogContent_'+studentId).value.trim();
-  const notes = document.getElementById('hsLogNotes_'+studentId).value.trim();
-  const hwState = document.querySelector(`#hsLogHwState_${studentId} button.active`)?.dataset.val || '완료';
-  const understanding = document.getElementById('hsLogUnderstanding_'+studentId).value;
-  const attitude = document.getElementById('hsLogAttitude_'+studentId).value;
-  const nextPlan = document.getElementById('hsLogNextPlan_'+studentId).value.trim();
-  const closingMood = document.getElementById('hsLogClosing_'+studentId).value;
+  const content = document.getElementById(`${prefix}LogContent_${studentId}`).value.trim();
+  const notes = document.getElementById(`${prefix}LogNotes_${studentId}`).value.trim();
+  const hwState = document.querySelector(`#${prefix}LogHwState_${studentId} button.active`)?.dataset.val || '완료';
+  const understanding = document.getElementById(`${prefix}LogUnderstanding_${studentId}`).value;
+  const attitude = document.getElementById(`${prefix}LogAttitude_${studentId}`).value;
+  const nextPlan = document.getElementById(`${prefix}LogNextPlan_${studentId}`).value.trim();
+  const closingMood = document.getElementById(`${prefix}LogClosing_${studentId}`).value;
 
   const { data: existing } = await sb.from('class_logs').select('*')
-    .eq('student_id', studentId).eq('note_date', todayStr()).maybeSingle();
+    .eq('student_id', studentId).eq('note_date', dateStr).maybeSingle();
 
   const composed = composeClassReport(s.name, { lessonContent: content, hwState, understanding, attitude, nextPlan, notes, closingMood });
+  const isToday = dateStr === todayStr();
 
   const { error } = await sb.from('class_logs').upsert({
-    student_id: studentId, class_time: s.class_time || null, note_date: todayStr(),
+    student_id: studentId, class_time: s.class_time || null, note_date: dateStr,
     lesson_content: content,
     today_homework: existing ? existing.today_homework : '',
-    prev_homework_rate: computePrevHomeworkRate(studentId),
+    prev_homework_rate: isToday ? computePrevHomeworkRate(studentId) : (existing ? existing.prev_homework_rate : ''),
     special_notes: notes,
     homework_status: hwState,
     understanding: understanding,
@@ -2189,10 +2372,18 @@ async function saveQuickClassLog(studentId){
   }, { onConflict: 'student_id,note_date' });
   if(error){ alert('저장 실패: '+error.message); return; }
 
-  document.getElementById('hsLogPreview_'+studentId).textContent = composed;
-  document.getElementById('hsPreview_'+studentId).innerHTML = `
-    <span class="hs-log-item"><strong>오늘 수업</strong> ${content ? escapeHtml(content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
-    <span class="hs-log-item"><strong>오늘 과제</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
+  const previewEl = document.getElementById(`${prefix}LogPreview_${studentId}`);
+  if(previewEl) previewEl.textContent = composed;
+
+  // 행 상단의 요약 줄도 함께 갱신 (홈: hsPreview_, 수업일지 탭: clPreview_)
+  const summaryEl = document.getElementById(`${prefix}Preview_${studentId}`);
+  if(summaryEl){
+    const lessonLabel = isToday ? '오늘 수업' : '수업 내용';
+    const hwLabel = isToday ? '오늘 과제' : '그날 과제';
+    summaryEl.innerHTML = `
+      <span class="hs-log-item"><strong>${lessonLabel}</strong> ${content ? escapeHtml(content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
+      <span class="hs-log-item"><strong>${hwLabel}</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
+  }
 }
 
 /* =========================================================
