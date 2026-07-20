@@ -1757,12 +1757,14 @@ async function saveStudentProgressSlot(studentId, slotNum){
     student_id: studentId,
     slot_num: slotNum,
     textbook_name: textbookName,
-    current_unit_order: unitOrder
+    current_unit_order: unitOrder,
+    unit_status: '진행중',
+    unit_started_at: todayStr()
   }, { onConflict: 'student_id,slot_num' });
   if(error){ alert('저장 실패: ' + error.message); return; }
 
   const row = detailProgressRows.find(r=>r.slot_num===slotNum);
-  if(row){ row.textbook_name = textbookName; row.current_unit_order = unitOrder; }
+  if(row){ row.textbook_name = textbookName; row.current_unit_order = unitOrder; row.unit_status = '진행중'; row.unit_started_at = todayStr(); }
   alert(`${slotNum}번 교재 진도가 저장되었습니다.`);
 }
 
@@ -1975,6 +1977,8 @@ function classLogHwStateButtonsHtml(current){
 function classLogEditorHtml(studentId, prefix, log, dateStr){
   const isToday = dateStr === todayStr();
   return `
+    <div id="${prefix}LogProgress_${studentId}" class="cl-progress-box"></div>
+
     <label>수업 내용</label>
     <textarea id="${prefix}LogContent_${studentId}" rows="2" placeholder="오늘 진도, 다룬 내용을 적어주세요.">${log && log.lesson_content ? escapeHtml(log.lesson_content) : ''}</textarea>
 
@@ -2002,6 +2006,62 @@ function classLogEditorHtml(studentId, prefix, log, dateStr){
       <button class="btn btn-primary btn-sm" onclick="saveClassLogGeneric('${studentId}','${prefix}','${dateStr}')">저장 + 미리보기</button>
       <button class="btn btn-ghost btn-sm" onclick="toggleClassLogEditor('${studentId}','${prefix}')">취소</button>
     </div>`;
+}
+
+// 수업일지 편집창을 열 때, 이 학생의 교재별 진도(현재 단원 + 진행/완료 상태)를 보여주고
+// "오늘 이 단원 끝남" 버튼으로 다음 단원으로 넘길 수 있게 함.
+// 교재/단원이 지정 안 된 슬롯(학생 상세보기에서 설정 전)은 표시하지 않음.
+async function renderClassLogProgressSection(studentId, prefix){
+  const box = document.getElementById(`${prefix}LogProgress_${studentId}`);
+  if(!box) return;
+  box.innerHTML = '';
+  await ensureCurriculumMapLoaded();
+  const { data, error } = await sb.from('student_progress').select('*')
+    .eq('student_id', studentId).order('slot_num');
+  if(error || !data) return;
+  const rows = data.filter(r => r.textbook_name && r.current_unit_order);
+  if(!rows.length) return;
+  box.innerHTML = rows.map(r => classLogProgressRowHtml(studentId, prefix, r)).join('');
+}
+
+function classLogProgressRowHtml(studentId, prefix, row){
+  const units = curriculumUnitsFor(row.textbook_name);
+  const unit = units.find(u => u.unit_order === row.current_unit_order);
+  const unitLabel = unit ? `${unit.unit_order}단원 ${escapeHtml(unit.unit_name)}` : '단원 정보 없음';
+  const statusLabel = row.unit_status === '완료' ? '완료' : '진행중';
+  const startedLabel = row.unit_started_at ? ` · ${fmtDate(row.unit_started_at)}부터` : '';
+  const nextUnit = units.find(u => u.unit_order === row.current_unit_order + 1);
+
+  const actionHtml = nextUnit
+    ? `<button type="button" class="btn btn-ghost btn-sm" onclick="advanceProgressUnit('${studentId}','${prefix}',${row.slot_num})">오늘 이 단원 끝남 → 다음 단원</button>`
+    : (unit ? `<span class="sub" style="font-size:12px;">· 마지막 단원</span>` : '');
+
+  return `
+    <div class="cl-progress-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink-soft);margin-bottom:6px;">
+      <span>${row.slot_num}번 · ${escapeHtml(row.textbook_name)} · ${unitLabel} (${statusLabel}${startedLabel})</span>
+      ${actionHtml}
+    </div>`;
+}
+
+// "오늘 이 단원 끝남" 버튼 처리: curriculum_map에서 다음 unit_order를 찾아 student_progress를 갱신하고,
+// unit_status를 '진행중'으로, unit_started_at을 오늘로 다시 세팅함(새 단원을 오늘 시작한 것이므로).
+async function advanceProgressUnit(studentId, prefix, slotNum){
+  const { data: row, error: fetchErr } = await sb.from('student_progress').select('*')
+    .eq('student_id', studentId).eq('slot_num', slotNum).maybeSingle();
+  if(fetchErr || !row || !row.textbook_name) return;
+
+  const units = curriculumUnitsFor(row.textbook_name);
+  const nextUnit = units.find(u => u.unit_order === row.current_unit_order + 1);
+  if(!nextUnit){ alert('이 교재의 마지막 단원입니다.'); return; }
+
+  const { error } = await sb.from('student_progress').update({
+    current_unit_order: nextUnit.unit_order,
+    unit_status: '진행중',
+    unit_started_at: todayStr()
+  }).eq('student_id', studentId).eq('slot_num', slotNum);
+  if(error){ alert('진도 갱신 실패: ' + error.message); return; }
+
+  renderClassLogProgressSection(studentId, prefix);
 }
 
 function todayKoreanWeekday(){ return ['일','월','화','수','목','금','토'][new Date().getDay()]; }
@@ -2541,6 +2601,7 @@ function toggleClassLogEditor(studentId, prefix){
   box.style.display = isOpen ? 'none' : 'flex';
   if(!isOpen){
     document.getElementById(prefix+'LogContent_'+studentId).focus();
+    renderClassLogProgressSection(studentId, prefix);
   }
 }
 
