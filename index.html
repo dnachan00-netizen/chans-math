@@ -2372,9 +2372,11 @@ async function renderClassLogStudentList(){
 // 학생이 보기에 명확한 제목/내용으로 자동 변환. 패턴에 안 맞으면 원문 그대로 둠.
 // 콤마로 나뉜 항목 중 "숫자." 로 시작하지 않는 항목은 새 교재가 아니라, 바로 앞 교재에 이어지는
 // 또 다른 페이지 구간으로 취급 (예: "2.30-31,34-37" → 2번 교재의 30~31쪽과 34~37쪽 두 구간).
-function formatHwShorthand(raw){
+// "1.34-36,2.5-8" 같은 축약형을 교재 번호+페이지 범위 배열로 파싱.
+// 숙제 빠른입력(formatHwShorthand)과 수업일지 수업내용 확장(expandLessonContentForReport)이 공용으로 사용.
+function parseBookShorthand(raw){
   const parts = raw.split(/[,、，]/).map(p=>p.trim()).filter(Boolean);
-  if(!parts.length) return { title: raw, description: '', books: [] };
+  if(!parts.length) return { ok: false, books: [] };
 
   const books = []; // [{ num, ranges: [] }]
   let ok = true;
@@ -2388,20 +2390,45 @@ function formatHwShorthand(raw){
       ok = false;
     }
   });
-
-  if(ok && books.length){
-    const bookText = b => `${b.num}번 교재 ${b.ranges.join(', ').replace(/-/g,'~')}쪽`;
-    if(books.length === 1){
-      return { title: bookText(books[0]), description: '', books };
-    }
-    return {
-      title: `교재 숙제 (${books.length}건)`,
-      description: books.map(b=>`· ${bookText(b)}`).join('\n'),
-      books
-    };
-  }
-  return { title: raw, description: '', books: [] };
+  return { ok: ok && books.length > 0, books };
 }
+
+function formatHwShorthand(raw){
+  const parsed = parseBookShorthand(raw);
+  if(!parsed.ok) return { title: raw, description: '', books: [] };
+
+  const books = parsed.books;
+  const bookText = b => `${b.num}번 교재 ${b.ranges.join(', ').replace(/-/g,'~')}쪽`;
+  if(books.length === 1){
+    return { title: bookText(books[0]), description: '', books };
+  }
+  return {
+    title: `교재 숙제 (${books.length}건)`,
+    description: books.map(b=>`· ${bookText(b)}`).join('\n'),
+    books
+  };
+}
+
+// 수업일지 "수업 내용"에 "1.110-125" 같은 축약형을 쓰면, 그 학생의 1번 슬롯에 지정된 교재명을 찾아
+// 리포트에는 "1번 교재(큐브개념 6-2) 110~125쪽"처럼 풀어서 나가도록 확장.
+// lesson_content 저장값 자체(축약형 원문)는 건드리지 않음 — 리포트 조합 시에만 이 확장된 텍스트를 사용.
+async function expandLessonContentForReport(studentId, raw){
+  const parsed = parseBookShorthand(raw);
+  if(!parsed.ok) return raw;
+
+  const { data } = await sb.from('student_progress').select('slot_num, textbook_name')
+    .eq('student_id', studentId);
+  const nameBySlot = {};
+  (data || []).forEach(r => { if(r.textbook_name) nameBySlot[r.slot_num] = r.textbook_name; });
+
+  const bookText = b => {
+    const name = nameBySlot[parseInt(b.num, 10)];
+    const label = name ? `${b.num}번 교재(${name})` : `${b.num}번 교재`;
+    return `${label} ${b.ranges.join(', ').replace(/-/g,'~')}쪽`;
+  };
+  return parsed.books.map(bookText).join(', ');
+}
+
 
 // formatHwShorthand로 파싱된 교재 슬롯별 범위를 student_progress에 반영.
 // 지금 단계에서는 curriculum_map과 아직 연결하지 않고 last_completed_point만 기록함
@@ -2620,7 +2647,8 @@ async function saveClassLogGeneric(studentId, prefix, dateStr){
   const { data: existing } = await sb.from('class_logs').select('*')
     .eq('student_id', studentId).eq('note_date', dateStr).maybeSingle();
 
-  const composed = composeClassReport(s.name, { lessonContent: content, hwState, understanding, attitude, nextPlan, notes, closingMood });
+  const expandedContent = await expandLessonContentForReport(studentId, content);
+  const composed = composeClassReport(s.name, { lessonContent: expandedContent, hwState, understanding, attitude, nextPlan, notes, closingMood });
   const isToday = dateStr === todayStr();
 
   const { error } = await sb.from('class_logs').upsert({
