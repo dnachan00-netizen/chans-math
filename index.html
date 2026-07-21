@@ -1398,16 +1398,26 @@ document.getElementById('addStudentBtn').addEventListener('click', async ()=>{
   } else {
     const { data: inserted, error } = await sb.from('students').insert({ name, grade, school, phone, guardian_phone: guardianPhone, class_time: classTime || null, enrollment_status: enrollStatus, send_daily_report: sendDailyReport, report_send_time: reportSendTime }).select().single();
     if(error){ alert('등록 실패: '+error.message); return; }
-    if(phone){
+
+    // 연락처가 있으면 학생 계정을, 보호자 연락처가 있으면 학부모 계정을 등록과 동시에 자동 생성.
+    // (예전엔 학생 계정만 자동 생성되고, 학부모 계정은 수정 화면에 따로 들어가서 버튼을 눌러야 만들어졌음)
+    if(phone || guardianPhone){
       const btn = document.getElementById('addStudentBtn');
       btn.disabled = true; btn.textContent = '계정 생성 중...';
-      const result = await syncStudentAccount(inserted.id);
+
+      const results = {};
+      if(phone) results.student = await syncStudentAccount(inserted.id);
+      if(guardianPhone) results.guardian = await invokeStaffFunction('sync-guardian-account', { student_id: inserted.id });
+
       btn.disabled = false; btn.textContent = '학생 등록하기';
-      if(result){
-        alert(`학생 등록 완료! (로그인 계정 ${result.status})\n\n아이디: ${result.email}\n비밀번호: ${result.password}\n\n이 정보를 학생에게 안내해 주세요.`);
-      }
+
+      let msg = '학생 등록 완료!\n';
+      if(results.student) msg += `\n[학생 계정 ${results.student.status}]\n아이디: ${results.student.email}\n비밀번호: ${results.student.password}\n`;
+      if(results.guardian) msg += `\n[학부모 계정 ${results.guardian.status}]\n아이디: ${results.guardian.email}\n` + (results.guardian.password ? `비밀번호: ${results.guardian.password}\n` : '');
+      if(results.student || results.guardian) msg += '\n이 정보를 학생/학부모님께 안내해 주세요.';
+      alert(msg);
     } else {
-      alert('학생이 등록되었습니다.\n(연락처가 없어 로그인 계정은 자동 생성되지 않았습니다 — 나중에 연락처를 입력하고 "학생 계정 동기화" 버튼으로 만드실 수 있습니다.)');
+      alert('학생이 등록되었습니다.\n(연락처가 없어 로그인 계정은 자동 생성되지 않았습니다 — 나중에 연락처를 입력하고 "학생/학부모 계정 동기화" 버튼으로 만드실 수 있습니다.)');
     }
   }
   document.getElementById('stuName').value=''; document.getElementById('stuSchool').value=''; document.getElementById('stuPhone').value=''; document.getElementById('stuGuardianPhone').value=''; document.getElementById('stuClassTime').value=''; document.getElementById('stuEnrollStatus').value='재원'; document.getElementById('stuSendDailyReport').checked=true; document.getElementById('stuReportSendTime').value='';
