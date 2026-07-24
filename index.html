@@ -663,6 +663,7 @@
             <option value="퇴원">퇴원</option>
           </select>
           <input type="text" id="studentSearch" placeholder="이름으로 검색" style="max-width:220px;">
+          <button class="btn btn-ghost btn-sm" id="studentExportBtn">CSV로 내보내기</button>
         </div>
       </div>
       <div id="reportOffSummary"></div>
@@ -1608,6 +1609,34 @@ function renderStudentTable(){
   html += `</tbody></table>`;
   wrap.innerHTML = html;
 }
+
+document.getElementById('studentExportBtn').addEventListener('click', ()=>{
+  const keyword = document.getElementById('studentSearch').value.trim();
+  const statusFilter = document.getElementById('studentStatusFilter').value;
+  const list = students
+    .filter(s=>s.name.includes(keyword))
+    .filter(s=> !statusFilter || (s.enrollment_status || '재원') === statusFilter)
+    .slice().sort((a,b)=>{
+      const diff = classSortIndex(a.class_time) - classSortIndex(b.class_time);
+      if(diff !== 0) return diff;
+      return (a.name||'').localeCompare(b.name||'', 'ko');
+    });
+  const rows = [['이름','상태','학년','반','학교','연락처','보호자 연락처','출석률','평균 점수']];
+  list.forEach(s=>{
+    const attList = attendance.filter(a=>a.studentId===s.id);
+    const presentCount = attList.filter(a=>a.status==='출석').length;
+    const rate = attList.length ? Math.round(presentCount/attList.length*100) : null;
+    const scoreList = scores.filter(sc=>sc.studentId===s.id);
+    const avg = scoreList.length ? Math.round(scoreList.reduce((a,b)=>a+Number(b.score),0)/scoreList.length) : null;
+    rows.push([
+      s.name, s.enrollment_status || '재원', s.grade || '', s.class_time || '', s.school || '',
+      s.phone || '', s.guardian_phone || '',
+      rate===null ? '' : rate+'%',
+      avg===null ? '' : avg+'점'
+    ]);
+  });
+  downloadCSV('찬스수학_학생명단.csv', rows);
+});
 
 async function deleteStudent(id){
   const s = findStudent(id); if(!s) return;
