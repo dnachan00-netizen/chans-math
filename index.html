@@ -2447,18 +2447,52 @@ const CLASSLOG_CLOSING_OPTIONS = [
   '감사합니다! 다음 시간엔 더 재밌게 준비해볼게요! ✨',
   '감사합니다! 좋은 하루 보내세요! 😊'
 ];
+// 이해도/태도/마무리 인사 공용: 저장된 값이 미리 정의된 옵션 목록에 없으면(=예전에 직접 입력했던 문구) "직접 입력"으로 취급
+function classLogFlatAttitudeOptions(){
+  return CLASSLOG_ATTITUDE_GROUPS.flatMap(g=>g.options);
+}
+function classLogIsCustomValue(current, list){
+  return !!(current && !list.includes(current));
+}
+// 드롭다운에서 "✏️ 직접 입력"을 고르면 옆의 텍스트 입력창을 펼쳐서 보여줌. 저장 시엔 이 입력창 값이 우선 사용됨(classLogFieldValue 참고).
+function onClassLogCustomToggle(selectEl){
+  const custom = document.getElementById(selectEl.id+'_custom');
+  if(!custom) return;
+  custom.style.display = selectEl.value === '__custom__' ? 'block' : 'none';
+  if(selectEl.value === '__custom__') custom.focus();
+}
+function classLogCustomInputHtml(fieldId, current, list){
+  const isCustom = classLogIsCustomValue(current, list);
+  return `<input type="text" id="${fieldId}_custom" placeholder="직접 입력해주세요" style="display:${isCustom?'block':'none'};margin-top:6px;" value="${isCustom?escapeHtml(current):''}">`;
+}
+// select가 "직접 입력"으로 선택돼 있으면 옆 텍스트 입력창 값을, 아니면 select 자체 값을 반환
+function classLogFieldValue(fieldId){
+  const sel = document.getElementById(fieldId);
+  if(!sel) return '';
+  if(sel.value === '__custom__'){
+    const custom = document.getElementById(fieldId+'_custom');
+    return custom ? custom.value.trim() : '';
+  }
+  return sel.value;
+}
 function classLogUnderstandingOptionsHtml(current){
+  const isCustom = classLogIsCustomValue(current, CLASSLOG_UNDERSTANDING_OPTIONS);
   return `<option value="">선택 안 함</option>` +
-    CLASSLOG_UNDERSTANDING_OPTIONS.map(o=>`<option${current===o?' selected':''}>${o}</option>`).join('');
+    CLASSLOG_UNDERSTANDING_OPTIONS.map(o=>`<option${current===o?' selected':''}>${o}</option>`).join('') +
+    `<option value="__custom__"${isCustom?' selected':''}>✏️ 직접 입력</option>`;
 }
 function classLogAttitudeOptionsHtml(current){
+  const isCustom = classLogIsCustomValue(current, classLogFlatAttitudeOptions());
   return `<option value="">선택 안 함</option>` +
     CLASSLOG_ATTITUDE_GROUPS.map(g=>`<optgroup label="${g.label}">` +
       g.options.map(o=>`<option${current===o?' selected':''}>${o}</option>`).join('') +
-    `</optgroup>`).join('');
+    `</optgroup>`).join('') +
+    `<option value="__custom__"${isCustom?' selected':''}>✏️ 직접 입력</option>`;
 }
 function classLogClosingOptionsHtml(current){
-  return CLASSLOG_CLOSING_OPTIONS.map((o,i)=>`<option${(current ? current===o : i===0)?' selected':''}>${o}</option>`).join('');
+  const isCustom = classLogIsCustomValue(current, CLASSLOG_CLOSING_OPTIONS);
+  return CLASSLOG_CLOSING_OPTIONS.map((o,i)=>`<option${(current ? current===o : i===0)?' selected':''}>${o}</option>`).join('') +
+    `<option value="__custom__"${isCustom?' selected':''}>✏️ 직접 입력</option>`;
 }
 function classLogHwStateButtonsHtml(current){
   return ['완료','일부','미완료','없음'].map(v=>
@@ -2480,10 +2514,12 @@ function classLogEditorHtml(studentId, prefix, log, dateStr){
     <div class="segmented4" id="${prefix}LogHwState_${studentId}">${classLogHwStateButtonsHtml(log && log.homework_status)}</div>
 
     <label>이해도</label>
-    <select id="${prefix}LogUnderstanding_${studentId}">${classLogUnderstandingOptionsHtml(log && log.understanding)}</select>
+    <select id="${prefix}LogUnderstanding_${studentId}" onchange="onClassLogCustomToggle(this)">${classLogUnderstandingOptionsHtml(log && log.understanding)}</select>
+    ${classLogCustomInputHtml(`${prefix}LogUnderstanding_${studentId}`, log && log.understanding, CLASSLOG_UNDERSTANDING_OPTIONS)}
 
     <label>태도</label>
-    <select id="${prefix}LogAttitude_${studentId}">${classLogAttitudeOptionsHtml(log && log.attitude)}</select>
+    <select id="${prefix}LogAttitude_${studentId}" onchange="onClassLogCustomToggle(this)">${classLogAttitudeOptionsHtml(log && log.attitude)}</select>
+    ${classLogCustomInputHtml(`${prefix}LogAttitude_${studentId}`, log && log.attitude, classLogFlatAttitudeOptions())}
 
     <label>일일테스트</label>
     <div class="cl-dailytest" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -2503,7 +2539,8 @@ function classLogEditorHtml(studentId, prefix, log, dateStr){
     <textarea id="${prefix}LogNotes_${studentId}" rows="2" placeholder="지각, 컨디션, 학부모 전달사항 등">${log && log.special_notes ? escapeHtml(log.special_notes) : ''}</textarea>
 
     <label>마무리 인사</label>
-    <select id="${prefix}LogClosing_${studentId}">${classLogClosingOptionsHtml(log && log.closing_mood)}</select>
+    <select id="${prefix}LogClosing_${studentId}" onchange="onClassLogCustomToggle(this)">${classLogClosingOptionsHtml(log && log.closing_mood)}</select>
+    ${classLogCustomInputHtml(`${prefix}LogClosing_${studentId}`, log && log.closing_mood, CLASSLOG_CLOSING_OPTIONS)}
 
     ${isToday ? `<div class="cl-prev-rate" style="margin:6px 0;">${computePrevHomeworkRate(studentId)}</div>` : ''}
     <div class="cl-report-preview" id="${prefix}LogPreview_${studentId}"></div>
@@ -3157,10 +3194,10 @@ async function saveClassLogGeneric(studentId, prefix, dateStr){
   const content = document.getElementById(`${prefix}LogContent_${studentId}`).value.trim();
   const notes = document.getElementById(`${prefix}LogNotes_${studentId}`).value.trim();
   const hwState = document.querySelector(`#${prefix}LogHwState_${studentId} button.active`)?.dataset.val || '완료';
-  const understanding = document.getElementById(`${prefix}LogUnderstanding_${studentId}`).value;
-  const attitude = document.getElementById(`${prefix}LogAttitude_${studentId}`).value;
+  const understanding = classLogFieldValue(`${prefix}LogUnderstanding_${studentId}`);
+  const attitude = classLogFieldValue(`${prefix}LogAttitude_${studentId}`);
   const nextPlan = document.getElementById(`${prefix}LogNextPlan_${studentId}`).value.trim();
-  const closingMood = document.getElementById(`${prefix}LogClosing_${studentId}`).value;
+  const closingMood = classLogFieldValue(`${prefix}LogClosing_${studentId}`);
   const dtTaken = document.getElementById(`${prefix}LogDtTaken_${studentId}`).checked;
   const dtScore = dtTaken ? Number(document.getElementById(`${prefix}LogDtCount_${studentId}`).value) * 10 : null;
 
