@@ -2456,6 +2456,17 @@ function classLogEditorHtml(studentId, prefix, log, dateStr){
     <label>태도</label>
     <select id="${prefix}LogAttitude_${studentId}">${classLogAttitudeOptionsHtml(log && log.attitude)}</select>
 
+    <label>일일테스트</label>
+    <div class="cl-dailytest" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:400;">
+        <input type="checkbox" id="${prefix}LogDtTaken_${studentId}" onchange="onDailyTestToggle('${studentId}','${prefix}')" ${log && log.daily_test_taken ? 'checked' : ''}>
+        오늘 일일테스트 봄
+      </label>
+      <select id="${prefix}LogDtCount_${studentId}" style="display:${log && log.daily_test_taken ? 'inline-block' : 'none'};max-width:160px;">
+        ${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}"${log && log.daily_test_score!=null && log.daily_test_score===n*10 ? ' selected':''}>${n}문항 맞음 (${n*10}점)</option>`).join('')}
+      </select>
+    </div>
+
     <label>다음 시간 계획</label>
     <input type="text" id="${prefix}LogNextPlan_${studentId}" placeholder="예: 지수함수, 로그함수 복습하고 이어서 진도" value="${log&&log.next_plan?escapeHtml(log.next_plan):''}">
 
@@ -3065,13 +3076,14 @@ function toSentence(text){
 }
 
 // 수업 내용/숙제수행/이해도/태도/다음계획/오늘메모를 하나의 자연스러운 문단으로 조합
-function composeClassReport(studentName, { lessonContent, hwState, understanding, attitude, nextPlan, notes, closingMood }){
+function composeClassReport(studentName, { lessonContent, hwState, understanding, attitude, nextPlan, notes, closingMood, dailyTestTaken, dailyTestScore }){
   const today = new Date();
   const dateLabel = `${today.getMonth()+1}월 ${today.getDate()}일`;
 
   const todayLines = [];
   if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 공부를 했습니다'));
   if(hwState && HW_STATE_SENTENCE[hwState]) todayLines.push(HW_STATE_SENTENCE[hwState](studentName));
+  if(dailyTestTaken && dailyTestScore!=null) todayLines.push(`오늘 일일테스트는 10문항 중 ${dailyTestScore/10}문항을 맞아 ${dailyTestScore}점입니다.`);
   if(understanding) todayLines.push(toSentence(understanding));
   if(attitude) todayLines.push(toSentence(attitude));
   if(notes) todayLines.push(toSentence(notes));
@@ -3102,6 +3114,13 @@ function toggleClassLogEditor(studentId, prefix){
   }
 }
 
+// 일일테스트 체크박스를 켜면 맞은 개수 선택창을 보여주고, 끄면 숨김(값은 저장 시 무시됨)
+function onDailyTestToggle(studentId, prefix){
+  const checked = document.getElementById(`${prefix}LogDtTaken_${studentId}`).checked;
+  const sel = document.getElementById(`${prefix}LogDtCount_${studentId}`);
+  if(sel) sel.style.display = checked ? 'inline-block' : 'none';
+}
+
 // 수업일지 저장 — 홈 화면(오늘 날짜 고정)과 수업일지 탭(날짜 선택 가능) 양쪽에서 공용으로 사용.
 // 같은 class_logs 테이블에 student_id+note_date 기준으로 upsert하므로 두 화면 중 어디서 작성하든 항상 같은 기록으로 동기화됨.
 async function saveClassLogGeneric(studentId, prefix, dateStr){
@@ -3113,12 +3132,14 @@ async function saveClassLogGeneric(studentId, prefix, dateStr){
   const attitude = document.getElementById(`${prefix}LogAttitude_${studentId}`).value;
   const nextPlan = document.getElementById(`${prefix}LogNextPlan_${studentId}`).value.trim();
   const closingMood = document.getElementById(`${prefix}LogClosing_${studentId}`).value;
+  const dtTaken = document.getElementById(`${prefix}LogDtTaken_${studentId}`).checked;
+  const dtScore = dtTaken ? Number(document.getElementById(`${prefix}LogDtCount_${studentId}`).value) * 10 : null;
 
   const { data: existing } = await sb.from('class_logs').select('*')
     .eq('student_id', studentId).eq('note_date', dateStr).maybeSingle();
 
   const expandedContent = await expandLessonContentForReport(studentId, content);
-  const composed = composeClassReport(s.name, { lessonContent: expandedContent, hwState, understanding, attitude, nextPlan, notes, closingMood });
+  const composed = composeClassReport(s.name, { lessonContent: expandedContent, hwState, understanding, attitude, nextPlan, notes, closingMood, dailyTestTaken: dtTaken, dailyTestScore: dtScore });
   const isToday = dateStr === todayStr();
 
   const { error } = await sb.from('class_logs').upsert({
@@ -3132,6 +3153,8 @@ async function saveClassLogGeneric(studentId, prefix, dateStr){
     attitude: attitude,
     next_plan: nextPlan,
     closing_mood: closingMood,
+    daily_test_taken: dtTaken,
+    daily_test_score: dtScore,
     composed_report: composed
   }, { onConflict: 'student_id,note_date' });
   if(error){ alert('저장 실패: '+error.message); return; }
@@ -3146,7 +3169,8 @@ async function saveClassLogGeneric(studentId, prefix, dateStr){
     const hwLabel = isToday ? '오늘 과제' : '그날 과제';
     summaryEl.innerHTML = `
       <span class="hs-log-item"><strong>${lessonLabel}</strong> ${content ? escapeHtml(content) : '<span class="hs-log-empty">아직 기록 없음</span>'}</span>
-      <span class="hs-log-item"><strong>${hwLabel}</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>`;
+      <span class="hs-log-item"><strong>${hwLabel}</strong> ${existing && existing.today_homework ? escapeHtml(existing.today_homework) : '<span class="hs-log-empty">아직 없음</span>'}</span>
+      ${dtTaken ? `<span class="hs-log-item"><strong>일일테스트</strong> ${dtScore}점</span>` : ''}`;
   }
 }
 
