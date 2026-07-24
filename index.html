@@ -3070,7 +3070,7 @@ function composeClassReport(studentName, { lessonContent, hwState, understanding
   const dateLabel = `${today.getMonth()+1}월 ${today.getDate()}일`;
 
   const todayLines = [];
-  if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 진도를 나갔습니다'));
+  if(lessonContent) todayLines.push(toSentence(lessonContent.match(/[.!?요]$/) ? lessonContent : lessonContent + ' 공부를 했습니다'));
   if(hwState && HW_STATE_SENTENCE[hwState]) todayLines.push(HW_STATE_SENTENCE[hwState](studentName));
   if(understanding) todayLines.push(toSentence(understanding));
   if(attitude) todayLines.push(toSentence(attitude));
